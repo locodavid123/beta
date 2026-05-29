@@ -42,7 +42,20 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Usuarios Clientes', style: TextStyle(fontWeight: FontWeight.bold)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFE61D63), Color(0xFF7B2CBF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Usuarios Clientes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         centerTitle: true,
       ),
       body: Column(
@@ -138,14 +151,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                                  color: const Color(0xFFE61D63).withValues(alpha: 0.08),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Center(
                                   child: Text(
                                     name.isNotEmpty ? name.split(' ').map((e) => e[0]).take(2).join().toUpperCase() : 'U',
                                     style: const TextStyle(
-                                      color: AppTheme.primaryColor,
+                                      color: Color(0xFFE61D63),
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
                                     ),
@@ -172,13 +185,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: (role == 'admin' ? AppTheme.goldAccent : AppTheme.primaryColor).withValues(alpha: 0.12),
+                                        color: (role == 'admin' ? AppTheme.goldAccent : const Color(0xFFE61D63)).withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
                                         role == 'admin' ? 'Administrador' : 'Cliente',
                                         style: TextStyle(
-                                          color: role == 'admin' ? AppTheme.goldAccent : AppTheme.primaryColor,
+                                          color: role == 'admin' ? AppTheme.goldAccent : const Color(0xFFE61D63),
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -210,8 +223,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                         }
                                       },
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-                                        foregroundColor: AppTheme.primaryColor,
+                                        backgroundColor: const Color(0xFFE61D63).withValues(alpha: 0.1),
+                                        foregroundColor: const Color(0xFFE61D63),
                                         elevation: 0,
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                         minimumSize: Size.zero,

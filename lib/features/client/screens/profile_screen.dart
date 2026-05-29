@@ -282,12 +282,15 @@ class ProfileScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isDark ? AppTheme.cardDark : Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.5), width: 1.5),
+                    border: Border.all(
+                      color: (state.userRole == 'root' ? const Color(0xFF2563EB) : const Color(0xFFE61D63)).withValues(alpha: 0.5),
+                      width: 1.5,
+                    ),
                   ),
                   child: _buildAccountItem(
                     context,
                     icon: Icons.admin_panel_settings_outlined,
-                    iconColor: AppTheme.goldAccent,
+                    iconColor: state.userRole == 'root' ? const Color(0xFF2563EB) : const Color(0xFFE61D63),
                     title: state.userRole == 'root' ? 'Volver al Panel Root' : 'Volver al Panel Admin',
                     subtitle: 'Regresar a la consola de administración',
                     onTap: () {

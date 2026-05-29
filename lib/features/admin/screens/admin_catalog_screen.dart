@@ -37,6 +37,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
   Widget build(BuildContext context) {
     final state = Provider.of<AppStateProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63);
 
     // Filter styles based on search and selected tab
     List<ArtStyle> filteredStyles = state.styles.where((style) {
@@ -64,7 +65,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
-                : AppTheme.primaryGradient,
+                : const LinearGradient(
+                    colors: [Color(0xFFE61D63), Color(0xFF7B2CBF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
           ),
         ),
         leading: IconButton(
@@ -83,13 +88,13 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                   MaterialPageRoute(builder: (context) => const AdminCreateStyleScreen()),
                 );
               },
-              icon: Icon(Icons.add, size: 16, color: state.userRole == 'root' ? Colors.blueAccent : AppTheme.primaryColor),
+              icon: Icon(Icons.add, size: 16, color: state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63)),
               label: Text(
                 'Nuevo',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: state.userRole == 'root' ? Colors.blueAccent : AppTheme.primaryColor,
+                  color: state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63),
                 ),
               ),
               style: ElevatedButton.styleFrom(
@@ -156,8 +161,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
               controller: _tabController,
               isScrollable: true,
               tabAlignment: TabAlignment.start,
-              indicatorColor: AppTheme.primaryColor,
-              labelColor: AppTheme.primaryColor,
+              indicatorColor: primaryColor,
+              labelColor: primaryColor,
               unselectedLabelColor: Colors.grey,
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               unselectedLabelStyle: const TextStyle(fontSize: 13),
@@ -213,6 +218,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
 
   Widget _buildStyleCard(BuildContext context, ArtStyle style, bool isDark) {
     final state = Provider.of<AppStateProvider>(context, listen: false);
+    final primaryColor = state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63);
 
     // Dynamic color based on status
     Color statusColor;
@@ -254,8 +260,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                   return Container(
                     width: 72,
                     height: 72,
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    child: const Icon(Icons.broken_image, color: AppTheme.primaryColor),
+                    color: primaryColor.withValues(alpha: 0.1),
+                    child: Icon(Icons.broken_image, color: primaryColor),
                   );
                 },
               ),

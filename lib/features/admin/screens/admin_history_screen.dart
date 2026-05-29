@@ -69,7 +69,20 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> with SingleTick
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historial Global', style: TextStyle(fontWeight: FontWeight.bold)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFE61D63), Color(0xFF7B2CBF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Historial Global', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         centerTitle: true,
       ),
       body: Column(
@@ -81,7 +94,11 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> with SingleTick
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
-                gradient: AppTheme.cardGradient,
+                gradient: LinearGradient(
+                  colors: [Color(0xFFE61D63), Color(0xFF7B2CBF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.all(Radius.circular(20)),
               ),
               child: Column(
@@ -149,8 +166,8 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> with SingleTick
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
             child: TabBar(
               controller: _tabController,
-              indicatorColor: AppTheme.primaryColor,
-              labelColor: AppTheme.primaryColor,
+              indicatorColor: const Color(0xFFE61D63),
+              labelColor: const Color(0xFFE61D63),
               unselectedLabelColor: Colors.grey,
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               unselectedLabelStyle: const TextStyle(fontSize: 13),
@@ -224,14 +241,14 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> with SingleTick
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                color: const Color(0xFFE61D63).withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Text(
                   userInitial,
                   style: const TextStyle(
-                    color: AppTheme.primaryColor,
+                    color: Color(0xFFE61D63),
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),

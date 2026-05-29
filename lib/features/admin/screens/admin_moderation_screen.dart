@@ -22,7 +22,20 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Moderación & Estadísticas', style: TextStyle(fontWeight: FontWeight.bold)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFE61D63), Color(0xFF7B2CBF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Moderación & Estadísticas', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -75,8 +88,8 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      _buildBar(label: 'Real', heightPct: 0.9, uses: '234', color: AppTheme.primaryColor),
-                      _buildBar(label: 'Cosm', heightPct: 0.7, uses: '159', color: AppTheme.primaryLight),
+                      _buildBar(label: 'Real', heightPct: 0.9, uses: '234', color: const Color(0xFFE61D63)),
+                      _buildBar(label: 'Cosm', heightPct: 0.7, uses: '159', color: const Color(0xFFE61D63).withValues(alpha: 0.65)),
                       _buildBar(label: 'Cybr', heightPct: 0.55, uses: '89', color: AppTheme.greenAccent),
                       _buildBar(label: 'Acua', heightPct: 0.25, uses: '12', color: AppTheme.goldAccent),
                       _buildBar(label: 'Stea', heightPct: 0.45, uses: '78', color: Colors.blueAccent),
@@ -161,7 +174,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
                   _buildLogItem(
                     text: "cliente_prueba generó 'Realeza Imperial'",
                     time: "hace 2 min",
-                    dotColor: AppTheme.primaryColor,
+                    dotColor: const Color(0xFFE61D63),
                   ),
                   _buildDivider(isDark),
                   _buildLogItem(

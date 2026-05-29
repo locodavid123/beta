@@ -33,7 +33,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: LinearGradient(
+              colors: [Color(0xFFE61D63), Color(0xFF7B2CBF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
         leading: IconButton(
@@ -275,7 +279,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   _buildToolItem(
                     context,
                     icon: Icons.palette_outlined,
-                    iconColor: AppTheme.primaryColor,
+                    iconColor: const Color(0xFFE61D63),
                     title: 'Gestionar Catálogo',
                     subtitle: 'Crear, editar y eliminar estilos',
                     onTap: () {
@@ -427,7 +431,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildToolItem(
     BuildContext context, {
     required IconData icon,
-    Color iconColor = AppTheme.primaryColor,
+    Color iconColor = const Color(0xFFE61D63),
     required String title,
     required String subtitle,
     required VoidCallback onTap,

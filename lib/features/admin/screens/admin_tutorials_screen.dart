@@ -16,6 +16,8 @@ class _AdminTutorialsScreenState extends State<AdminTutorialsScreen> {
   String _searchQuery = '';
 
   void _showAddEditTutorialDialog({Tutorial? tutorial}) {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    final primaryColor = state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63);
     final titleController = TextEditingController(text: tutorial?.title ?? '');
     final durationController = TextEditingController(text: tutorial?.duration ?? '');
     String difficulty = tutorial?.difficulty ?? 'Fácil';
@@ -67,7 +69,7 @@ class _AdminTutorialsScreenState extends State<AdminTutorialsScreen> {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Publicado', style: TextStyle(fontSize: 14)),
                       value: isPublished,
-                      activeThumbColor: AppTheme.primaryColor,
+                      activeThumbColor: primaryColor,
                       onChanged: (val) {
                         setDialogState(() {
                           isPublished = val;
@@ -161,7 +163,11 @@ class _AdminTutorialsScreenState extends State<AdminTutorialsScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
-                : AppTheme.primaryGradient,
+                : const LinearGradient(
+                    colors: [Color(0xFFE61D63), Color(0xFF7B2CBF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
           ),
         ),
         leading: IconButton(
@@ -175,13 +181,13 @@ class _AdminTutorialsScreenState extends State<AdminTutorialsScreen> {
             padding: const EdgeInsets.only(right: 16),
             child: ElevatedButton.icon(
               onPressed: () => _showAddEditTutorialDialog(),
-              icon: Icon(Icons.add, size: 16, color: state.userRole == 'root' ? Colors.blueAccent : AppTheme.primaryColor),
+              icon: Icon(Icons.add, size: 16, color: state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63)),
               label: Text(
                 'Nuevo',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: state.userRole == 'root' ? Colors.blueAccent : AppTheme.primaryColor,
+                  color: state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63),
                 ),
               ),
               style: ElevatedButton.styleFrom(
@@ -282,6 +288,7 @@ class _AdminTutorialsScreenState extends State<AdminTutorialsScreen> {
 
   Widget _buildTutorialCard(BuildContext context, Tutorial tutorial, bool isDark) {
     final state = Provider.of<AppStateProvider>(context, listen: false);
+    final primaryColor = state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63);
 
     // Alternate background or status indicator colors
     Color diffColor;
@@ -307,11 +314,11 @@ class _AdminTutorialsScreenState extends State<AdminTutorialsScreen> {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                color: primaryColor.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Center(
-                child: Icon(Icons.play_circle_fill, color: AppTheme.primaryColor, size: 28),
+              child: Center(
+                child: Icon(Icons.play_circle_fill, color: primaryColor, size: 28),
               ),
             ),
             const SizedBox(width: 14),

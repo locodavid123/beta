@@ -55,10 +55,33 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
     final state = Provider.of<AppStateProvider>(context, listen: false);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isEditing = widget.styleToEdit != null;
+    final Color primaryColor = state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Editar Estilo' : 'Crear Nuevo Estilo', style: const TextStyle(fontWeight: FontWeight.bold)),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: state.userRole == 'root'
+                ? const LinearGradient(
+                    colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : const LinearGradient(
+                    colors: [Color(0xFFE61D63), Color(0xFF7B2CBF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          isEditing ? 'Editar Estilo' : 'Crear Nuevo Estilo',
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -120,7 +143,7 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                             contentPadding: EdgeInsets.zero,
                             title: const Text('Popular', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                             value: _isHot,
-                            activeColor: AppTheme.primaryColor,
+                            activeColor: primaryColor,
                             onChanged: (val) => setState(() => _isHot = val ?? false),
                           ),
                         ],
@@ -199,7 +222,7 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                             ),
                           ),
                           selected: selected,
-                          selectedColor: AppTheme.primaryColor,
+                          selectedColor: primaryColor,
                           backgroundColor: isDark ? AppTheme.cardDark : Colors.grey[200],
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           onSelected: (val) {
@@ -234,7 +257,7 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                             ),
                           ),
                           selected: selected,
-                          selectedColor: AppTheme.primaryColor,
+                          selectedColor: primaryColor,
                           backgroundColor: isDark ? AppTheme.cardDark : Colors.grey[200],
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           onSelected: (val) {
@@ -256,7 +279,7 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   value: _isPublished,
-                  activeThumbColor: AppTheme.primaryColor,
+                  activeThumbColor: primaryColor,
                   onChanged: (val) => setState(() => _isPublished = val),
                 ),
                 const SizedBox(height: 18),
@@ -344,7 +367,7 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9D0208), // Crimson Magenta / deep red
+                      backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       elevation: 0,

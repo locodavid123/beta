@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
 import 'history_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -40,7 +40,7 @@ class HomeScreen extends StatelessWidget {
                           Text(
                             'Buenos días ☀️',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               fontSize: 14,
                             ),
                           ),
@@ -61,7 +61,7 @@ class HomeScreen extends StatelessWidget {
                         height: 46,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppTheme.goldAccent.withOpacity(0.2),
+                          color: AppTheme.goldAccent.withValues(alpha: 0.2),
                           border: Border.all(color: AppTheme.goldAccent, width: 2),
                         ),
                         child: Center(
@@ -163,7 +163,7 @@ class HomeScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
                       blurRadius: 15,
                       offset: const Offset(0, 8),
                     ),
@@ -211,7 +211,7 @@ class HomeScreen extends StatelessWidget {
                               Text(
                                 'Más de 200 usuarios lo usaron',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 13,
                                 ),
                               ),
@@ -282,7 +282,7 @@ class HomeScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
+                                color: Colors.black.withValues(alpha: 0.03),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -358,7 +358,7 @@ class HomeScreen extends StatelessWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -417,7 +417,7 @@ class HomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
@@ -459,7 +459,7 @@ class HomeScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
+                    color: Colors.black.withValues(alpha: 0.03),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
 import 'register_screen.dart';
-import 'navigation_holder.dart';
+import '../../../core/widgets/auth_gate.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,10 +38,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       
       if (mounted) {
-        // Navigate to main navigation screen (Home, etc.)
+        // Navigate to main routing gate
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const NavigationHolder()),
+          MaterialPageRoute(builder: (context) => const AuthGate()),
           (route) => false,
         );
       }
@@ -115,9 +115,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AppTheme.redAccent.withOpacity(0.1),
+                          color: AppTheme.redAccent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.redAccent.withOpacity(0.3)),
+                          border: Border.all(color: AppTheme.redAccent.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           children: [

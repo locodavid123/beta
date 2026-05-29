@@ -45,7 +45,6 @@ class AppTheme {
         primary: primaryColor,
         secondary: primaryLight,
         surface: cardLight,
-        background: bgLight,
         error: redAccent,
       ),
       textTheme: GoogleFonts.outfitTextTheme().copyWith(
@@ -58,10 +57,10 @@ class AppTheme {
           color: textLight,
         ),
         bodyLarge: GoogleFonts.outfit(
-          color: textLight.withOpacity(0.9),
+          color: textLight.withValues(alpha: 0.9),
         ),
         bodyMedium: GoogleFonts.outfit(
-          color: textLight.withOpacity(0.7),
+          color: textLight.withValues(alpha: 0.7),
         ),
       ),
       cardTheme: CardThemeData(
@@ -101,7 +100,6 @@ class AppTheme {
         primary: primaryColor,
         secondary: primaryLight,
         surface: cardDark,
-        background: bgDark,
         error: redAccent,
       ),
       textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).copyWith(
@@ -114,10 +112,10 @@ class AppTheme {
           color: textDark,
         ),
         bodyLarge: GoogleFonts.outfit(
-          color: textDark.withOpacity(0.9),
+          color: textDark.withValues(alpha: 0.9),
         ),
         bodyMedium: GoogleFonts.outfit(
-          color: textDark.withOpacity(0.7),
+          color: textDark.withValues(alpha: 0.7),
         ),
       ),
       cardTheme: CardThemeData(

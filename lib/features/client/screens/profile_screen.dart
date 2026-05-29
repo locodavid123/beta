@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
 import 'settings_screen.dart';
 import 'add_pet_screen.dart';
-import 'admin_dashboard_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -60,7 +59,7 @@ class ProfileScreen extends StatelessWidget {
                               height: 90,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 border: Border.all(color: Colors.white, width: 3),
                               ),
                               child: Center(
@@ -111,7 +110,7 @@ class ProfileScreen extends StatelessWidget {
                         Text(
                           state.userEmail,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 14,
                           ),
                         ),
@@ -201,7 +200,7 @@ class ProfileScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.01),
+                              color: Colors.black.withValues(alpha: 0.01),
                               blurRadius: 5,
                             ),
                           ],
@@ -319,21 +318,6 @@ class ProfileScreen extends StatelessWidget {
                         );
                       },
                     ),
-                    _buildDivider(isDark, horizontal: true),
-                    // ADMIN PANEL LINK
-                    _buildAccountItem(
-                      context,
-                      icon: Icons.admin_panel_settings_outlined,
-                      iconColor: AppTheme.goldAccent,
-                      title: 'Panel de Administración',
-                      subtitle: 'Gestionar catálogo, usuarios y logs',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),
@@ -395,7 +379,7 @@ class ProfileScreen extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.08),
+          color: iconColor.withValues(alpha: 0.08),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: iconColor, size: 20),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
 
 class AddPetScreen extends StatefulWidget {
   const AddPetScreen({super.key});
@@ -60,7 +60,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('¡${name} registrada con éxito!')),
+        SnackBar(content: Text('¡$name registrada con éxito!')),
       );
     }
   }
@@ -103,7 +103,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
                         shape: BoxShape.circle,
                         color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
                         border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.15),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.15),
                           width: 2,
                         ),
                       ),
@@ -133,9 +133,9 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.greenAccent.withOpacity(0.1),
+                      color: AppTheme.greenAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.greenAccent.withOpacity(0.3)),
+                      border: Border.all(color: AppTheme.greenAccent.withValues(alpha: 0.3)),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -176,7 +176,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
                 margin: const EdgeInsets.all(10),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Row(
@@ -238,7 +238,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
             const SizedBox(height: 8),
             _buildTextField(
               controller: _notesController,
-              hintText: 'Alergias, preferencias de corte...',
+              hintText: 'Alergias, preferences de corte...',
               maxLines: 4,
             ),
             const SizedBox(height: 36),
@@ -253,7 +253,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 6),
                     ),

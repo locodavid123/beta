@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
-import '../models/creation.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/models/creation.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -81,7 +81,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         Text(
                           '$distinctStyles estilos distintos • $distinctPets mascotas',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 12,
                           ),
                         ),
@@ -171,7 +171,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -217,7 +217,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.06),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Row(

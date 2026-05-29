@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/pet.dart';
 import '../models/style.dart';
 import '../models/creation.dart';
+import '../models/tutorial.dart';
+import '../models/report.dart';
 import '../services/firebase_service.dart';
 
 class AppStateProvider extends ChangeNotifier {
@@ -21,6 +23,12 @@ class AppStateProvider extends ChangeNotifier {
 
   List<Creation> _creations = [];
   List<Creation> get creations => _creations;
+
+  List<Tutorial> _tutorials = [];
+  List<Tutorial> get tutorials => _tutorials;
+
+  List<ModerationReport> _reports = [];
+  List<ModerationReport> get reports => _reports;
 
   // App settings
   bool _isDarkMode = false;
@@ -56,6 +64,7 @@ class AppStateProvider extends ChangeNotifier {
   bool get isAuthenticated => _firebaseService.currentUserEmail != null;
   String get userName => _firebaseService.currentUserName;
   String get userEmail => _firebaseService.currentUserEmail ?? 'invitado@correo.com';
+  String get userRole => _firebaseService.currentUserRole;
 
   // Constructor
   AppStateProvider() {
@@ -90,6 +99,8 @@ class AppStateProvider extends ChangeNotifier {
     _pets = await _firebaseService.getPets();
     _styles = await _firebaseService.getStyles();
     _creations = await _firebaseService.getCreations();
+    _tutorials = await _firebaseService.getTutorials();
+    _reports = await _firebaseService.getReports();
     notifyListeners();
   }
 
@@ -256,7 +267,6 @@ class AppStateProvider extends ChangeNotifier {
     // Generate output details
     // We use the pre-generated asset for this style
     String resultingImagePath = style.imagePath;
-    String dateStr = DateTime.now().toIso8601String();
     
     // Create prompt/description
     String desc = "Un retrato majestuoso de ${pet.name} (${pet.breed}) al estilo ${style.name}. ${style.description}";
@@ -292,5 +302,78 @@ class AppStateProvider extends ChangeNotifier {
     await prefs.remove('mock_creations');
     _creations.clear();
     await refreshAllData();
+  }
+
+  // --- Dynamic Style CRUD ---
+  Future<void> updateStyle(ArtStyle style) async {
+    await _firebaseService.updateStyle(style);
+    await refreshAllData();
+  }
+
+  Future<void> deleteStyle(String id) async {
+    await _firebaseService.deleteStyle(id);
+    await refreshAllData();
+  }
+
+  // --- Tutorials CRUD ---
+  Future<void> addTutorial({
+    required String title,
+    required String duration,
+    required String difficulty,
+    String status = 'publicado',
+  }) async {
+    final newTutorial = Tutorial(
+      id: 't_${DateTime.now().millisecondsSinceEpoch}',
+      title: title,
+      duration: duration,
+      difficulty: difficulty,
+      status: status,
+    );
+    await _firebaseService.addTutorial(newTutorial);
+    await refreshAllData();
+  }
+
+  Future<void> updateTutorial(Tutorial tutorial) async {
+    await _firebaseService.updateTutorial(tutorial);
+    await refreshAllData();
+  }
+
+  Future<void> deleteTutorial(String id) async {
+    await _firebaseService.deleteTutorial(id);
+    await refreshAllData();
+  }
+
+  // --- Moderation CRUD ---
+  Future<void> addReport({
+    required String userEmail,
+    required String reason,
+    required String creationId,
+    required String creationImagePath,
+    required String priority,
+  }) async {
+    final newReport = ModerationReport(
+      id: 'r_${DateTime.now().millisecondsSinceEpoch}',
+      userEmail: userEmail,
+      reason: reason,
+      creationId: creationId,
+      creationImagePath: creationImagePath,
+      priority: priority,
+      date: DateTime.now(),
+    );
+    await _firebaseService.addReport(newReport);
+    await refreshAllData();
+  }
+
+  Future<void> resolveReport(String id) async {
+    await _firebaseService.resolveReport(id);
+    await refreshAllData();
+  }
+
+  // Set user credits dynamically (Admin/Root utility)
+  Future<void> setUserCredits(int amount) async {
+    _credits = amount;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('user_credits', amount);
+    notifyListeners();
   }
 }

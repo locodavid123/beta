@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
-import 'welcome_screen.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/auth_gate.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -269,10 +269,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: () async {
                           Navigator.pop(context);
                           await state.logoutUser();
-                          if (mounted) {
+                          if (context.mounted) {
                             Navigator.pushAndRemoveUntil(
                               context,
-                              MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                              MaterialPageRoute(builder: (context) => const AuthGate()),
                               (route) => false,
                             );
                           }
@@ -342,7 +342,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.08),
+          color: AppTheme.primaryColor.withValues(alpha: 0.08),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: AppTheme.primaryColor, size: 18),
@@ -358,7 +358,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: AppTheme.primaryColor,
+        activeThumbColor: AppTheme.primaryColor,
       ),
     );
   }
@@ -376,7 +376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.08),
+          color: iconColor.withValues(alpha: 0.08),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: iconColor, size: 18),

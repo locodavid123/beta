@@ -5,6 +5,11 @@ class ArtStyle {
   final String imagePath;
   final String description;
   final bool isHot;
+  final String status; // 'activo', 'borrador', 'archivado'
+  final String promptTemplate;
+  final String coatType; // 'Pelo Largo', 'Pelo Corto', 'Ambos'
+  final String difficulty; // 'Fácil', 'Medio', 'Difícil'
+  final int uses;
 
   ArtStyle({
     required this.id,
@@ -13,6 +18,11 @@ class ArtStyle {
     required this.imagePath,
     required this.description,
     this.isHot = false,
+    this.status = 'activo',
+    this.promptTemplate = '',
+    this.coatType = 'Ambos',
+    this.difficulty = 'Medio',
+    this.uses = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +33,11 @@ class ArtStyle {
       'imagePath': imagePath,
       'description': description,
       'isHot': isHot,
+      'status': status,
+      'promptTemplate': promptTemplate,
+      'coatType': coatType,
+      'difficulty': difficulty,
+      'uses': uses,
     };
   }
 
@@ -34,6 +49,11 @@ class ArtStyle {
       imagePath: map['imagePath'] ?? '',
       description: map['description'] ?? '',
       isHot: map['isHot'] ?? false,
+      status: map['status'] ?? 'activo',
+      promptTemplate: map['promptTemplate'] ?? '',
+      coatType: map['coatType'] ?? 'Ambos',
+      difficulty: map['difficulty'] ?? 'Medio',
+      uses: map['uses'] ?? 0,
     );
   }
 }

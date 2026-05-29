@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
-import '../models/style.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/models/style.dart';
 
 class StylesCatalogScreen extends StatefulWidget {
   const StylesCatalogScreen({super.key});
@@ -167,7 +167,7 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -228,7 +228,7 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                             width: 24,
                             height: 24,
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -258,7 +258,7 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 5,
                     ),
                   ],

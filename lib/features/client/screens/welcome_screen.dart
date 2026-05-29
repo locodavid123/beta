@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 
@@ -44,7 +44,7 @@ class WelcomeScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -76,7 +76,7 @@ class WelcomeScreen extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontWeight: FontWeight.w400,
                           height: 1.3,
                         ),
@@ -127,7 +127,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 15,
                       offset: const Offset(0, -5),
                     ),
@@ -203,10 +203,10 @@ class WelcomeScreen extends StatelessWidget {
                             },
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: AppTheme.primaryColor.withOpacity(0.15),
+                                color: AppTheme.primaryColor.withValues(alpha: 0.15),
                                 width: 1.5,
                               ),
-                              backgroundColor: AppTheme.primaryColor.withOpacity(0.06),
+                              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.06),
                               foregroundColor: AppTheme.primaryColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'providers/app_state.dart';
-import 'theme/app_theme.dart';
-import 'screens/welcome_screen.dart';
+import 'core/providers/app_state.dart';
+import 'core/theme/app_theme.dart';
+import 'core/widgets/auth_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const WelcomeScreen(),
+      home: const AuthGate(),
     );
   }
 }

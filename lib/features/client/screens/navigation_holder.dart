@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
 import 'home_screen.dart';
 import 'styles_catalog_screen.dart';
 import 'simulator_screen.dart';
@@ -36,7 +36,7 @@ class _NavigationHolderState extends State<NavigationHolder> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),

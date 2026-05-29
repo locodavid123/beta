@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
-import '../models/pet.dart';
-import '../models/style.dart';
-import '../models/creation.dart';
+import '../../../core/providers/app_state.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/models/pet.dart';
+import '../../../core/models/style.dart';
+import '../../../core/models/creation.dart';
 import 'add_pet_screen.dart';
 
 class SimulatorScreen extends StatefulWidget {
@@ -110,7 +110,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.08),
+                color: AppTheme.primaryColor.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -207,7 +207,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   decoration: BoxDecoration(
                     color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2), width: 1.5),
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2), width: 1.5),
                   ),
                   child: const Center(
                     child: Row(
@@ -263,7 +263,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.02),
+                                  color: Colors.black.withValues(alpha: 0.02),
                                   blurRadius: 5,
                                 ),
                               ],
@@ -308,7 +308,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.redAccent.withOpacity(0.1),
+                  color: AppTheme.redAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
@@ -335,7 +335,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
+                    color: Colors.black.withValues(alpha: 0.03),
                     blurRadius: 15,
                     offset: const Offset(0, 4),
                   ),
@@ -495,7 +495,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 6),
                       ),

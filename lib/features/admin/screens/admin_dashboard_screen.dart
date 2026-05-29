@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/auth_gate.dart';
+import '../../client/screens/navigation_holder.dart';
+import '../../root/screens/root_dashboard_screen.dart';
 import 'admin_catalog_screen.dart';
 import 'admin_history_screen.dart';
 import 'admin_tutorials_screen.dart';
@@ -29,75 +31,175 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            if (state.userRole == 'root') {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
+                (route) => false,
+              );
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+                (route) => false,
+              );
+            }
+          },
+        ),
         title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              state.userRole == 'root' ? 'Panel Root' : 'Panel ADMIN',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            const Text(
+              'Panel de Administración',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
             ),
             Text(
-              state.userRole == 'root' ? 'Superusuario' : 'Administrador General',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              state.userRole == 'root' ? 'Superusuario' : 'Admin General',
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
             ),
           ],
         ),
-        centerTitle: true,
-        automaticallyImplyLeading: false, // No back navigation
+        centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Cerrar sesión',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('¿Cerrar sesión?'),
-                  content: const Text('¿Estás seguro de que quieres salir de la aplicación?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await state.logoutUser();
-                        if (context.mounted) {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const AuthGate()),
-                            (route) => false,
-                          );
-                        }
-                      },
-                      child: const Text('Salir', style: TextStyle(color: AppTheme.redAccent)),
-                    ),
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'home') {
+                if (state.userRole == 'root') {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
+                    (route) => false,
+                  );
+                } else {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+                    (route) => false,
+                  );
+                }
+              } else if (value == 'client') {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const NavigationHolder()),
+                  (route) => false,
+                );
+              } else if (value == 'logout') {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('¿Cerrar sesión?'),
+                    content: const Text('¿Estás seguro de que quieres salir de la aplicación?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await state.logoutUser();
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const AuthGate()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        child: const Text('Salir', style: TextStyle(color: AppTheme.redAccent)),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+            offset: const Offset(0, 48),
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'home',
+                child: Row(
+                  children: [
+                    Icon(Icons.home_outlined, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text('Volver al panel principal'),
                   ],
                 ),
-              );
-            },
-          ),
-          // Admin Avatar
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppTheme.primaryLight.withValues(alpha: 0.2),
-              border: Border.all(color: AppTheme.primaryLight, width: 1.5),
-            ),
-            child: Center(
-              child: Text(
-                state.userRole == 'root' ? 'RT' : 'AG',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+              ),
+              const PopupMenuItem<String>(
+                value: 'client',
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text('Vista Cliente (Pruebas)'),
+                  ],
                 ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout_outlined, color: AppTheme.redAccent),
+                    SizedBox(width: 8),
+                    Text('Cerrar sesión', style: TextStyle(color: AppTheme.redAccent)),
+                  ],
+                ),
+              ),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.15),
+                      border: Border.all(color: Colors.white30, width: 1),
+                    ),
+                    child: Center(
+                      child: Text(
+                        state.userRole == 'root' ? 'RT' : 'AG',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      state.userRole == 'root' ? 'ROOT' : 'ADMIN',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: SingleChildScrollView(

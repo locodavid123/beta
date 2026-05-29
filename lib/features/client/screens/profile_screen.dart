@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/auth_gate.dart';
+import '../../admin/screens/admin_dashboard_screen.dart';
+import '../../root/screens/root_dashboard_screen.dart';
 import 'settings_screen.dart';
 import 'add_pet_screen.dart';
 
@@ -261,6 +264,53 @@ class ProfileScreen extends StatelessWidget {
                   ),
             const SizedBox(height: 24),
 
+            if (state.userRole == 'admin' || state.userRole == 'root') ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Administración',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 18),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.cardDark : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.5), width: 1.5),
+                  ),
+                  child: _buildAccountItem(
+                    context,
+                    icon: Icons.admin_panel_settings_outlined,
+                    iconColor: AppTheme.goldAccent,
+                    title: state.userRole == 'root' ? 'Volver al Panel Root' : 'Volver al Panel Admin',
+                    subtitle: 'Regresar a la consola de administración',
+                    onTap: () {
+                      if (state.userRole == 'root') {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
+                          (route) => false,
+                        );
+                      } else {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+                          (route) => false,
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
             // Cuenta section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -308,13 +358,51 @@ class ProfileScreen extends StatelessWidget {
                     _buildDivider(isDark, horizontal: true),
                     _buildAccountItem(
                       context,
-                      icon: Icons.notifications_none,
-                      title: 'Notificaciones',
-                      subtitle: 'Alertas y recordatorios',
+                      icon: Icons.settings_outlined,
+                      title: 'Ajustes',
+                      subtitle: 'Preferencias de la aplicación',
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                        );
+                      },
+                    ),
+                    _buildDivider(isDark, horizontal: true),
+                    _buildAccountItem(
+                      context,
+                      icon: Icons.logout_outlined,
+                      iconColor: AppTheme.redAccent,
+                      title: 'Cerrar sesión',
+                      titleColor: AppTheme.redAccent,
+                      subtitle: 'Salir de la aplicación',
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('¿Cerrar sesión?'),
+                            content: const Text('¿Estás seguro de que quieres salir de la aplicación?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancelar'),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  await state.logoutUser();
+                                  if (context.mounted) {
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const AuthGate()),
+                                      (route) => false,
+                                    );
+                                  }
+                                },
+                                child: const Text('Salir', style: TextStyle(color: AppTheme.redAccent)),
+                              ),
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -371,6 +459,7 @@ class ProfileScreen extends StatelessWidget {
     required IconData icon,
     Color iconColor = AppTheme.primaryColor,
     required String title,
+    Color? titleColor,
     required String subtitle,
     required VoidCallback onTap,
   }) {
@@ -386,9 +475,10 @@ class ProfileScreen extends StatelessWidget {
       ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 14,
+          color: titleColor,
         ),
       ),
       subtitle: Text(

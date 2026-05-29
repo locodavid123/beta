@@ -56,12 +56,26 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Catálogo de Estilos', style: TextStyle(fontWeight: FontWeight.bold)),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: state.userRole == 'root'
+                ? const LinearGradient(
+                    colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : AppTheme.primaryGradient,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Catálogo de Estilos', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         centerTitle: true,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            // "+ Nuevo" Button
             child: ElevatedButton.icon(
               onPressed: () {
                 Navigator.push(
@@ -69,11 +83,17 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                   MaterialPageRoute(builder: (context) => const AdminCreateStyleScreen()),
                 );
               },
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Nuevo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              icon: Icon(Icons.add, size: 16, color: state.userRole == 'root' ? Colors.blueAccent : AppTheme.primaryColor),
+              label: Text(
+                'Nuevo',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: state.userRole == 'root' ? Colors.blueAccent : AppTheme.primaryColor,
+                ),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
+                backgroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

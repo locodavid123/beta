@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/auth_gate.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,68 +11,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _apiKeyController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    final state = Provider.of<AppStateProvider>(context, listen: false);
-    _apiKeyController.text = state.geminiApiKey;
-  }
-
-  @override
-  void dispose() {
-    _apiKeyController.dispose();
-    super.dispose();
-  }
-
-  void _showApiKeyDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final state = Provider.of<AppStateProvider>(context);
-        return AlertDialog(
-          title: const Text('API Key de Gemini'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Ingresa tu clave personal de Google Gemini para habilitar respuestas personalizadas e interacciones de IA reales.',
-                style: TextStyle(fontSize: 13, height: 1.3),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _apiKeyController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'API Key',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                state.setGeminiApiKey(_apiKeyController.text.trim());
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('API Key guardada con éxito.')),
-                );
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _showLanguageDialog() {
     showDialog(
       context: context,
@@ -92,34 +29,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(lang),
                   if (state.language == lang)
-                    const Icon(Icons.check, color: AppTheme.primaryColor),
-                ],
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  void _showQualityDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final state = Provider.of<AppStateProvider>(context);
-        return SimpleDialog(
-          title: const Text('Calidad de Imagen'),
-          children: ['Baja (rápido)', 'Media', 'Alta (más lento)'].map((q) {
-            return SimpleDialogOption(
-              onPressed: () {
-                state.setImageQuality(q);
-                Navigator.pop(context);
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(q),
-                  if (state.imageQuality == q)
                     const Icon(Icons.check, color: AppTheme.primaryColor),
                 ],
               ),
@@ -192,25 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (val) => state.setEmailNotifications(val),
             ),
           ]),
-          const SizedBox(height: 24),
 
-          // IA & GENERACIÓN
-          _buildSectionHeader('IA & Generación'),
-          _buildSettingCard([
-            _buildNavigationTile(
-              icon: Icons.tune_outlined,
-              title: 'Calidad de imagen',
-              trailingText: state.imageQuality,
-              onTap: _showQualityDialog,
-            ),
-            _buildDivider(isDark),
-            _buildNavigationTile(
-              icon: Icons.key_outlined,
-              title: 'API Key de Gemini',
-              trailingText: state.geminiApiKey.isNotEmpty ? '••••••••' : 'Configurar',
-              onTap: _showApiKeyDialog,
-            ),
-          ]),
           const SizedBox(height: 24),
 
           // CUENTA
@@ -241,43 +132,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           );
                         },
                         child: const Text('Borrar todo', style: TextStyle(color: AppTheme.redAccent)),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            _buildDivider(isDark),
-            _buildNavigationTile(
-              icon: Icons.logout_outlined,
-              iconColor: AppTheme.redAccent,
-              title: 'Cerrar sesión',
-              titleColor: AppTheme.redAccent,
-              trailingText: '',
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('¿Cerrar sesión?'),
-                    content: const Text('¿Estás seguro de que quieres salir de la aplicación?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancelar'),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          await state.logoutUser();
-                          if (context.mounted) {
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(builder: (context) => const AuthGate()),
-                              (route) => false,
-                            );
-                          }
-                        },
-                        child: const Text('Salir', style: TextStyle(color: AppTheme.redAccent)),
                       ),
                     ],
                   ),

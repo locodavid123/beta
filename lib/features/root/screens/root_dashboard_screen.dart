@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/auth_gate.dart';
+import '../../client/screens/navigation_holder.dart';
 import '../../admin/screens/admin_catalog_screen.dart';
 import '../../admin/screens/admin_tutorials_screen.dart';
 import 'root_users_screen.dart';
@@ -30,87 +31,163 @@ class _RootDashboardScreenState extends State<RootDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppTheme.goldAccent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.goldAccent, width: 1),
-              ),
-              child: const Text(
-                'ROOT',
-                style: TextStyle(
-                  color: AppTheme.goldAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                ),
-              ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(width: 8),
-            const Text('Panel Root', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
+              (route) => false,
+            );
+          },
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Panel de Control Root',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+            ),
+            Text(
+              state.userRole == 'root' ? 'Superusuario' : 'Admin General',
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
+            ),
           ],
         ),
-        centerTitle: true,
-        automaticallyImplyLeading: false, // No back button
+        centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_outlined),
-            tooltip: 'Cerrar sesión',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('¿Cerrar sesión?'),
-                  content: const Text('¿Estás seguro de que quieres salir del Panel Root?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await state.logoutUser();
-                        if (context.mounted) {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const AuthGate()),
-                            (route) => false,
-                          );
-                        }
-                      },
-                      child: const Text('Salir', style: TextStyle(color: AppTheme.redAccent)),
-                    ),
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'home') {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
+                  (route) => false,
+                );
+              } else if (value == 'client') {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const NavigationHolder()),
+                  (route) => false,
+                );
+              } else if (value == 'logout') {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('¿Cerrar sesión?'),
+                    content: const Text('¿Estás seguro de que quieres salir del Panel Root?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await state.logoutUser();
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const AuthGate()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        child: const Text('Salir', style: TextStyle(color: AppTheme.redAccent)),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+            offset: const Offset(0, 48),
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'home',
+                child: Row(
+                  children: [
+                    Icon(Icons.home_outlined, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text('Volver al panel principal'),
                   ],
                 ),
-              );
-            },
-          ),
-          // Root Avatar
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppTheme.goldAccent.withValues(alpha: 0.2),
-              border: Border.all(color: AppTheme.goldAccent, width: 1.5),
-            ),
-            child: const Center(
-              child: Text(
-                'RA',
-                style: TextStyle(
-                  color: AppTheme.goldAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+              ),
+              const PopupMenuItem<String>(
+                value: 'client',
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text('Vista Cliente (Pruebas)'),
+                  ],
                 ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout_outlined, color: AppTheme.redAccent),
+                    SizedBox(width: 8),
+                    Text('Cerrar sesión', style: TextStyle(color: AppTheme.redAccent)),
+                  ],
+                ),
+              ),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.15),
+                      border: Border.all(color: Colors.white30, width: 1),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'RA',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'ROOT',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: SingleChildScrollView(

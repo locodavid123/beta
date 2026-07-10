@@ -7,6 +7,7 @@ class Pet {
   final String notes;
   final String imagePath;
   final bool isVerifiedByAI;
+  final String userEmail;
 
   Pet({
     required this.id,
@@ -17,6 +18,7 @@ class Pet {
     required this.notes,
     required this.imagePath,
     this.isVerifiedByAI = false,
+    required this.userEmail,
   });
 
   Map<String, dynamic> toMap() {
@@ -29,6 +31,7 @@ class Pet {
       'notes': notes,
       'imagePath': imagePath,
       'isVerifiedByAI': isVerifiedByAI,
+      'userEmail': userEmail,
     };
   }
 
@@ -42,6 +45,7 @@ class Pet {
       notes: map['notes'] ?? '',
       imagePath: map['imagePath'] ?? '',
       isVerifiedByAI: map['isVerifiedByAI'] ?? false,
+      userEmail: map['userEmail'] ?? '',
     );
   }
 }

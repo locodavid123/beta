@@ -220,7 +220,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Gestiona el contenido y usuarios de Stylize Me.',
+              'Gestiona el contenido y usuarios de Shih Tzu App.',
               style: TextStyle(color: Colors.grey, fontSize: 13),
             ),
             const SizedBox(height: 24),

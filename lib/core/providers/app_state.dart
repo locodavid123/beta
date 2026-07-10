@@ -6,6 +6,7 @@ import '../models/creation.dart';
 import '../models/tutorial.dart';
 import '../models/report.dart';
 import '../services/firebase_service.dart';
+import '../utils/translations.dart';
 
 class AppStateProvider extends ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -49,6 +50,9 @@ class AppStateProvider extends ChangeNotifier {
   String _geminiApiKey = '';
   String get geminiApiKey => _geminiApiKey;
 
+  String _userPhoto = '';
+  String get userPhoto => _userPhoto;
+
   int _credits = 5;
   int get credits => _credits;
 
@@ -87,6 +91,7 @@ class AppStateProvider extends ChangeNotifier {
     _imageQuality = prefs.getString('image_quality') ?? 'Alta (más lento)';
     _geminiApiKey = prefs.getString('gemini_api_key') ?? '';
     _credits = prefs.getInt('user_credits') ?? 5;
+    _userPhoto = prefs.getString('user_photo') ?? '';
 
     // Load data lists
     await refreshAllData();
@@ -166,6 +171,7 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await _firebaseService.signIn(email, password);
+      _userPhoto = _firebaseService.currentUserPhoto;
       await refreshAllData();
     } catch (e) {
       rethrow;
@@ -180,6 +186,7 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await _firebaseService.signUp(email, password, name);
+      _userPhoto = '';
       _credits = 5; // new accounts get 5 credits
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('user_credits', 5);
@@ -196,12 +203,13 @@ class AppStateProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     await _firebaseService.signOut();
+    _userPhoto = '';
     _currentNavIndex = 0;
+    await refreshAllData();
     _isLoading = false;
     notifyListeners();
   }
 
-  // --- Pet Management ---
   Future<void> registerPet({
     required String name,
     required String breed,
@@ -219,8 +227,19 @@ class AppStateProvider extends ChangeNotifier {
       notes: notes,
       imagePath: imagePath,
       isVerifiedByAI: true,
+      userEmail: userEmail,
     );
     await _firebaseService.addPet(newPet);
+    await refreshAllData();
+  }
+
+  Future<void> updatePet(Pet pet) async {
+    await _firebaseService.updatePet(pet);
+    await refreshAllData();
+  }
+
+  Future<void> deletePet(String id) async {
+    await _firebaseService.deletePet(id);
     await refreshAllData();
   }
 
@@ -269,7 +288,7 @@ class AppStateProvider extends ChangeNotifier {
     String resultingImagePath = style.imagePath;
     
     // Create prompt/description
-    String desc = "Un retrato majestuoso de ${pet.name} (${pet.breed}) al estilo ${style.name}. ${style.description}";
+    String desc = "Toma esta foto del perro como imagen base y aplica el estilo visual de la segunda imagen. Mantén la forma real del perro, pero adapta el pelaje, textura y corte según el estilo proporcionado. No cambies la pose ni el fondo, solo el pelaje.";
 
     // Subtract 1 credit
     _credits -= 1;
@@ -375,5 +394,46 @@ class AppStateProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('user_credits', amount);
     notifyListeners();
+  }
+
+  Future<void> updateUserProfile({
+    required String name,
+    required String photoPath,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _firebaseService.updateProfile(name: name, photoPath: photoPath);
+      _userPhoto = photoPath;
+      notifyListeners();
+    } catch (e) {
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _firebaseService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+    } catch (e) {
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  String translate(String key, {Map<String, String>? params}) {
+    return AppTranslations.translate(key, _language, params: params);
   }
 }

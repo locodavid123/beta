@@ -29,8 +29,10 @@ class FirebaseService {
   String? _currentUserEmail;
   String? _currentUserName;
   String _currentUserRole = 'client';
+  String? _currentUserPhoto;
 
   String get currentUserRole => _currentUserRole;
+  String get currentUserPhoto => _currentUserPhoto ?? '';
 
   // Initialize service
   Future<void> init() async {
@@ -59,16 +61,23 @@ class FirebaseService {
     if (!_isFirebaseInitialized) return;
     try {
       final stylesColl = FirebaseFirestore.instance.collection('styles');
-      final snapshot = await stylesColl.limit(1).get();
-      if (snapshot.docs.isEmpty) {
-        // Add default styles
-        for (var s in _getDefaultStyles()) {
+      
+      // Clean up the deprecated/deleted styles from Firestore database
+      final idsToRemove = {'realeza', 'cosmico', 'cyberpunk', 'acuarela', 'steampunk', 'kawaii'};
+      for (var id in idsToRemove) {
+        await stylesColl.doc(id).delete();
+      }
+
+      // Load/Seed default styles if not already present
+      for (var s in _getDefaultStyles()) {
+        final doc = await stylesColl.doc(s.id).get();
+        if (!doc.exists) {
           await stylesColl.doc(s.id).set(s.toMap());
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print("Error seeding styles: $e");
+        print("Error seeding/migrating styles in Firestore: $e");
       }
     }
   }
@@ -81,6 +90,7 @@ class FirebaseService {
     _currentUserEmail = prefs.getString('user_email');
     _currentUserName = prefs.getString('user_name') ?? 'Valentina López';
     _currentUserRole = prefs.getString('user_role') ?? 'client';
+    _currentUserPhoto = prefs.getString('user_photo') ?? '';
 
     // Load styles
     final stylesJson = prefs.getStringList('mock_styles');
@@ -88,6 +98,29 @@ class FirebaseService {
       _mockStyles.clear();
       for (var s in stylesJson) {
         _mockStyles.add(ArtStyle.fromMap(jsonDecode(s)));
+      }
+      // Explicitly remove the deprecated/deleted default concept styles
+      final idsToRemove = {'realeza', 'cosmico', 'cyberpunk', 'acuarela', 'steampunk', 'kawaii'};
+      bool removedAny = false;
+      _mockStyles.removeWhere((s) {
+        if (idsToRemove.contains(s.id)) {
+          removedAny = true;
+          return true;
+        }
+        return false;
+      });
+
+      // Add any missing default styles (e.g. the new Shih Tzu grooming cuts)
+      final defaultStyles = _getDefaultStyles();
+      bool addedAny = false;
+      for (var def in defaultStyles) {
+        if (!_mockStyles.any((s) => s.id == def.id)) {
+          _mockStyles.add(def);
+          addedAny = true;
+        }
+      }
+      if (addedAny || removedAny) {
+        await _saveMockStyles();
       }
     } else {
       _mockStyles.addAll(_getDefaultStyles());
@@ -101,7 +134,6 @@ class FirebaseService {
       for (var p in petsJson) {
         _mockPets.add(Pet.fromMap(jsonDecode(p)));
       }
-    } else {
       // Default pets
       _mockPets.addAll([
         Pet(
@@ -113,6 +145,7 @@ class FirebaseService {
           notes: 'Alergias, preferencias de corte...',
           imagePath: 'assets/images/luna_shih_tzu.png',
           isVerifiedByAI: true,
+          userEmail: 'cliente_prueba@email.com',
         ),
         Pet(
           id: 'max',
@@ -123,6 +156,7 @@ class FirebaseService {
           notes: 'Muy juguetón y amigable.',
           imagePath: 'assets/images/max_shih_tzu.png',
           isVerifiedByAI: true,
+          userEmail: 'cliente_prueba@email.com',
         ),
       ]);
       await _saveMockPets();
@@ -142,45 +176,45 @@ class FirebaseService {
           id: 'c1',
           petId: 'luna',
           petName: 'Luna',
-          styleId: 'realeza',
-          styleName: 'Realeza Imperial',
-          imagePath: 'assets/images/realeza_imperial.png',
+          styleId: 'corte_cachorro',
+          styleName: 'Corte Cachorro (Puppy Cut)',
+          imagePath: 'assets/images/corte_cachorro.png',
           date: DateTime.now().subtract(const Duration(hours: 3)),
           likes: 24,
-          description: 'Un retrato majestuoso de Luna en el estilo de la dinastía imperial china. Pelaje de seda dorada y una corona real con joyas incrustadas.',
+          description: 'Luna luciendo un hermoso y práctico corte cachorro de 2 pulgadas, muy cómoda y fresca.',
         ),
         Creation(
           id: 'c2',
           petId: 'max',
           petName: 'Max',
-          styleId: 'cosmico',
-          styleName: 'Fantasía Cósmica',
-          imagePath: 'assets/images/fantasia_cosmica.png',
+          styleId: 'corte_oso',
+          styleName: 'Corte Oso de Peluche',
+          imagePath: 'assets/images/corte_oso.png',
           date: DateTime.now().subtract(const Duration(days: 1)),
           likes: 11,
-          description: 'Un retrato espacial de Max flotando entre nebulosas galácticas púrpuras y destellos de estrellas brillantes.',
+          description: 'Max con su corte oso de peluche, su cabeza se ve muy redonda y tierna.',
         ),
         Creation(
           id: 'c3',
           petId: 'luna',
           petName: 'Luna',
-          styleId: 'cyberpunk',
-          styleName: 'Cyberpunk Neon',
-          imagePath: 'assets/images/cyberpunk_neon.png',
+          styleId: 'corte_leon',
+          styleName: 'Corte de León',
+          imagePath: 'assets/images/corte_leon.png',
           date: DateTime.now().subtract(const Duration(days: 5)),
           likes: 8,
-          description: 'Luna con gafas de sol futuristas y fondo de ciudad ciberpunk iluminada con luces de neón rosa y cian.',
+          description: 'Luna con un majestuoso corte de león, una melena abundante y cuerpo recortado.',
         ),
         Creation(
           id: 'c4',
           petId: 'luna',
           petName: 'Luna',
-          styleId: 'acuarela',
-          styleName: 'Acuarela Suave',
-          imagePath: 'assets/images/acuarela_suave.png',
+          styleId: 'corte_topknot',
+          styleName: 'Corte Top Knot',
+          imagePath: 'assets/images/corte_topknot.png',
           date: DateTime.now().subtract(const Duration(days: 8)),
           likes: 17,
-          description: 'Pintura artística de Luna en estilo acuarela suave con tonos pastel mezclados armoniosamente.',
+          description: 'Luna con su clásico top knot recogido con un lazo rojo elegante.',
         ),
       ]);
       await _saveMockCreations();
@@ -245,82 +279,69 @@ class FirebaseService {
   List<ArtStyle> _getDefaultStyles() {
     return [
       ArtStyle(
-        id: 'realeza',
-        name: 'Realeza Imperial',
+        id: 'corte_cachorro',
+        name: 'Corte Cachorro (Puppy Cut)',
         category: 'Clásico',
-        imagePath: 'assets/images/realeza_imperial.png',
-        description: 'Un retrato majestuoso de tu mascota vestido en ropajes de la realeza imperial con detalles dorados y corona.',
+        imagePath: 'assets/images/corte_cachorro.png',
+        description: 'Un corte práctico y uniforme de 1 a 2 pulgadas en todo el cuerpo, ideal para climas cálidos y fácil mantenimiento.',
         isHot: true,
         status: 'activo',
-        promptTemplate: 'A majestic royal portrait of a [breed] dog, wearing ancient Chinese imperial clothing with elaborate golden embroidery and a jewel-encrusted royal crown, luxurious background, highly detailed.',
+        promptTemplate: 'A professional portrait of a [breed] dog with a fresh puppy cut, showcasing short, even coat all over the body, neat round head, looking happy, studio lighting.',
+        coatType: 'Pelo Corto',
+        difficulty: 'Fácil',
+        uses: 340,
+      ),
+      ArtStyle(
+        id: 'corte_oso',
+        name: 'Corte Oso de Peluche',
+        category: 'Cute',
+        imagePath: 'assets/images/corte_oso.png',
+        description: 'Cuerpo recortado a longitud media y cabeza redondeada y esponjosa, dándole la apariencia tierna de un osito.',
+        isHot: true,
+        status: 'activo',
+        promptTemplate: 'A beautiful [breed] dog styled in a teddy bear cut, featuring a rounded fluffy head shape, neatly trimmed body, cute expressive eyes, soft pastel background.',
+        coatType: 'Ambos',
+        difficulty: 'Medio',
+        uses: 289,
+      ),
+      ArtStyle(
+        id: 'corte_leon',
+        name: 'Corte de León',
+        category: 'Fantasía',
+        imagePath: 'assets/images/corte_leon.png',
+        description: 'Cuerpo y patas recortados muy cortos, dejando una melena abundante y majestuosa alrededor del cuello y la cabeza.',
+        isHot: false,
+        status: 'activo',
+        promptTemplate: 'A majestic [breed] dog groomed with a lion cut, showing a neatly shaved body and limbs with a full, fluffy lion-like mane around its head and neck, looking proud.',
+        coatType: 'Pelo Largo',
+        difficulty: 'Difícil',
+        uses: 120,
+      ),
+      ArtStyle(
+        id: 'corte_exhibicion',
+        name: 'Corte de Exhibición',
+        category: 'Clásico',
+        imagePath: 'assets/images/corte_exhibicion.png',
+        description: 'El pelaje largo y sedoso tradicional que llega hasta el suelo, requiriendo cepillado diario y cuidado premium.',
+        isHot: false,
+        status: 'activo',
+        promptTemplate: 'A show-quality [breed] dog with a gorgeous, long flowing silky coat reaching the ground, head hair gathered in a classic topknot with a red ribbon bow.',
+        coatType: 'Pelo Largo',
+        difficulty: 'Difícil',
+        uses: 95,
+      ),
+      ArtStyle(
+        id: 'corte_topknot',
+        name: 'Corte Top Knot',
+        category: 'Cute',
+        imagePath: 'assets/images/corte_topknot.png',
+        description: 'El pelo de la cabeza se recoge elegantemente en una coleta o moño, sujetado con un lazo, mientras el cuerpo puede ir corto o largo.',
+        isHot: false,
+        status: 'activo',
+        promptTemplate: 'A cute [breed] dog with head hair gathered in a neat top knot ponytail adorned with a colorful ribbon, bright happy expression, high quality grooming.',
         coatType: 'Pelo Largo',
         difficulty: 'Medio',
-        uses: 234,
-      ),
-      ArtStyle(
-        id: 'cosmico',
-        name: 'Fantasía Cósmica',
-        category: 'Fantasía',
-        imagePath: 'assets/images/fantasia_cosmica.png',
-        description: 'Tu mascota flotando en el espacio rodeado de galaxias, nebulosas y estrellas brillantes.',
-        isHot: false,
-        status: 'activo',
-        promptTemplate: 'A cute [breed] dog floating in deep space, surrounded by beautiful colorful purple and blue nebulas, cosmic dust, and bright shining stars, cinematic lighting.',
-        coatType: 'Ambos',
-        difficulty: 'Medio',
-        uses: 159,
-      ),
-      ArtStyle(
-        id: 'cyberpunk',
-        name: 'Cyberpunk Neon',
-        category: 'Sci-Fi',
-        imagePath: 'assets/images/cyberpunk_neon.png',
-        description: 'Luces de neón intensas, lentes de sol tecnológicos y un ambiente urbano futurista.',
-        isHot: true,
-        status: 'activo',
-        promptTemplate: 'A futuristic [breed] dog wearing high-tech glowing sunglasses, background of a neon-drenched cyberpunk city at night with pink and cyan light reflections.',
-        coatType: 'Pelo Corto',
-        difficulty: 'Medio',
-        uses: 89,
-      ),
-      ArtStyle(
-        id: 'acuarela',
-        name: 'Acuarela Suave',
-        category: 'Arte',
-        imagePath: 'assets/images/acuarela_suave.png',
-        description: 'Trazo suave con salpicaduras de colores y pintura artística de acuarela.',
-        isHot: false,
-        status: 'activo',
-        promptTemplate: 'A soft artistic watercolor painting of a [breed] dog, with colorful paint splatters, delicate brushstrokes, pastel colors, white background.',
-        coatType: 'Ambos',
-        difficulty: 'Fácil',
-        uses: 12,
-      ),
-      ArtStyle(
-        id: 'steampunk',
-        name: 'Steampunk',
-        category: 'Steampunk',
-        imagePath: 'assets/images/steampunk.png',
-        description: 'Engranajes de bronce, tubos de vapor y accesorios antiguos del siglo XIX.',
-        isHot: false,
-        status: 'activo',
-        promptTemplate: 'A handsome [breed] dog dressed in 19th-century steampunk attire, with brass goggles on forehead, surrounded by bronze gears, copper pipes, and steam.',
-        coatType: 'Ambos',
-        difficulty: 'Difícil',
-        uses: 78,
-      ),
-      ArtStyle(
-        id: 'kawaii',
-        name: 'Kawaii Pastel',
-        category: 'Cute',
-        imagePath: 'assets/images/kawaii_pastel.png',
-        description: 'Un estilo super tierno y animado con colores pastel rosas, corazones y destellos de felicidad.',
-        isHot: true,
-        status: 'borrador',
-        promptTemplate: 'An extremely cute chibi-style cartoon [breed] dog, pastel pink background, surrounded by floating hearts, happy stars, and sparkles, anime aesthetic.',
-        coatType: 'Ambos',
-        difficulty: 'Fácil',
-        uses: 0,
+        uses: 180,
       ),
     ];
   }
@@ -384,8 +405,8 @@ class FirebaseService {
         id: 'r1',
         userEmail: 'maria.g@gmail.com',
         reason: 'Imagen inapropiada en simulación',
-        creationId: 'c1',
-        creationImagePath: 'assets/images/realeza_imperial.png',
+        creationId: 'c3',
+        creationImagePath: 'assets/images/corte_leon.png',
         priority: 'Alta',
         date: DateTime.now().subtract(const Duration(hours: 2)),
       ),
@@ -394,7 +415,7 @@ class FirebaseService {
         userEmail: 'carlos.p@gmail.com',
         reason: 'Error al compartir resultado',
         creationId: 'c2',
-        creationImagePath: 'assets/images/fantasia_cosmica.png',
+        creationImagePath: 'assets/images/corte_oso.png',
         priority: 'Media',
         date: DateTime.now().subtract(const Duration(hours: 6)),
       ),
@@ -402,8 +423,8 @@ class FirebaseService {
         id: 'r3',
         userEmail: 'laura.m@gmail.com',
         reason: 'Prompt generó contenido inesperado',
-        creationId: 'c3',
-        creationImagePath: 'assets/images/cyberpunk_neon.png',
+        creationId: 'c4',
+        creationImagePath: 'assets/images/corte_topknot.png',
         priority: 'Alta',
         date: DateTime.now().subtract(const Duration(hours: 10)),
       ),
@@ -421,40 +442,61 @@ class FirebaseService {
           if (doc.exists) {
             _currentUserName = doc.data()?['name'] ?? 'Usuario';
             _currentUserRole = doc.data()?['role'] ?? 'client';
+            _currentUserPhoto = doc.data()?['photoUrl'] ?? '';
           } else {
-            _currentUserName = cred.user!.email?.split('@').first ?? 'Usuario';
-            _currentUserRole = 'client';
+            // User does not exist in the Firestore database registry
+            await FirebaseAuth.instance.signOut();
+            throw Exception("El usuario no está registrado en la base de datos.");
           }
           _currentUserEmail = cred.user!.email;
           await prefs.setString('user_email', _currentUserEmail!);
           await prefs.setString('user_name', _currentUserName!);
           await prefs.setString('user_role', _currentUserRole);
+          await prefs.setString('user_photo', _currentUserPhoto!);
         }
         return cred;
       } catch (e) {
         rethrow;
       }
     } else {
-      // Mock Auth
-      if (email.isNotEmpty && password.length >= 6) {
-        _currentUserEmail = email;
-        if (email == 'root@email.com') {
-          _currentUserRole = 'root';
-          _currentUserName = 'Root Admin';
-        } else if (email == 'admin@email.com') {
-          _currentUserRole = 'admin';
-          _currentUserName = 'Admin General';
-        } else {
-          _currentUserRole = 'client';
-          _currentUserName = prefs.getString('user_name') ?? 'Valentina López';
-        }
-        await prefs.setString('user_email', email);
-        await prefs.setString('user_name', _currentUserName!);
-        await prefs.setString('user_role', _currentUserRole);
-        return null;
+      // Mock Auth database verification
+      final usersJson = prefs.getString('mock_users');
+      List<dynamic> users = [];
+      if (usersJson != null) {
+        users = jsonDecode(usersJson);
       } else {
-        throw Exception("Credenciales incorrectas (mínimo 6 caracteres en contraseña).");
+        // Seed default mock database
+        users = [
+          {"email": "cliente_prueba@email.com", "password": "password123", "name": "Valentina López", "role": "client", "credits": 5},
+          {"email": "valentina@email.com", "password": "password123", "name": "Valentina López", "role": "client", "credits": 5},
+          {"email": "admin@email.com", "password": "password123", "name": "Admin General", "role": "admin", "credits": 999},
+          {"email": "root@email.com", "password": "password123", "name": "Root Admin", "role": "root", "credits": 999}
+        ];
+        await prefs.setString('mock_users', jsonEncode(users));
       }
+
+      final normalizedEmail = email.trim().toLowerCase();
+      final userIndex = users.indexWhere((u) => u['email'].toString().toLowerCase() == normalizedEmail);
+      if (userIndex == -1) {
+        throw Exception("El usuario no está registrado en la base de datos.");
+      }
+
+      final user = users[userIndex];
+      if (user['password'] != password) {
+        throw Exception("Contraseña incorrecta.");
+      }
+
+      _currentUserEmail = user['email'];
+      _currentUserName = user['name'];
+      _currentUserRole = user['role'];
+      _currentUserPhoto = user['photoUrl'] ?? '';
+      
+      await prefs.setString('user_email', _currentUserEmail!);
+      await prefs.setString('user_name', _currentUserName!);
+      await prefs.setString('user_role', _currentUserRole);
+      await prefs.setString('user_photo', _currentUserPhoto!);
+      await prefs.setInt('user_credits', user['credits'] ?? 5);
+      return null;
     }
   }
 
@@ -473,29 +515,65 @@ class FirebaseService {
           'email': email,
           'credits': 5,
           'role': _currentUserRole,
+          'photoUrl': '',
         });
         _currentUserEmail = email;
         _currentUserName = name;
+        _currentUserPhoto = '';
         await prefs.setString('user_email', email);
         await prefs.setString('user_name', name);
         await prefs.setString('user_role', _currentUserRole);
+        await prefs.setString('user_photo', '');
         return cred;
       } catch (e) {
         rethrow;
       }
     } else {
-      // Mock SignUp
+      // Mock SignUp & Save to database
       if (email.isNotEmpty && password.length >= 6) {
-        _currentUserEmail = email;
-        _currentUserName = name;
+        final usersJson = prefs.getString('mock_users');
+        List<dynamic> users = [];
+        if (usersJson != null) {
+          users = jsonDecode(usersJson);
+        } else {
+          users = [
+            {"email": "cliente_prueba@email.com", "password": "password123", "name": "Valentina López", "role": "client", "credits": 5},
+            {"email": "valentina@email.com", "password": "password123", "name": "Valentina López", "role": "client", "credits": 5},
+            {"email": "admin@email.com", "password": "password123", "name": "Admin General", "role": "admin", "credits": 999},
+            {"email": "root@email.com", "password": "password123", "name": "Root Admin", "role": "root", "credits": 999}
+          ];
+        }
+
+        final normalizedEmail = email.trim().toLowerCase();
+        if (users.any((u) => u['email'].toString().toLowerCase() == normalizedEmail)) {
+          throw Exception("El correo ya está registrado.");
+        }
+
         _currentUserRole = (email == 'root@email.com')
             ? 'root'
             : (email == 'admin@email.com')
                 ? 'admin'
                 : 'client';
+
+        users.add({
+          "email": email,
+          "password": password,
+          "name": name,
+          "role": _currentUserRole,
+          "credits": 5,
+          "photoUrl": ""
+        });
+
+        await prefs.setString('mock_users', jsonEncode(users));
+
+        _currentUserEmail = email;
+        _currentUserName = name;
+        _currentUserPhoto = '';
         await prefs.setString('user_email', email);
         await prefs.setString('user_name', name);
         await prefs.setString('user_role', _currentUserRole);
+        await prefs.setString('user_photo', '');
+        await prefs.setInt('user_credits', 5);
         return null;
       } else {
         throw Exception("Datos inválidos.");
@@ -510,8 +588,10 @@ class FirebaseService {
     }
     _currentUserEmail = null;
     _currentUserRole = 'client';
+    _currentUserPhoto = null;
     await prefs.remove('user_email');
     await prefs.remove('user_role');
+    await prefs.remove('user_photo');
   }
 
   String? get currentUserEmail => _isFirebaseInitialized ? FirebaseAuth.instance.currentUser?.email : _currentUserEmail;
@@ -519,16 +599,20 @@ class FirebaseService {
 
   // --- Pets API ---
   Future<List<Pet>> getPets() async {
+    final email = currentUserEmail?.trim().toLowerCase() ?? '';
     if (_isFirebaseInitialized) {
       try {
-        final snapshot = await FirebaseFirestore.instance.collection('pets').get();
+        final snapshot = await FirebaseFirestore.instance
+            .collection('pets')
+            .where('userEmail', isEqualTo: email)
+            .get();
         return snapshot.docs.map((doc) => Pet.fromMap(doc.data())).toList();
       } catch (e) {
         if (kDebugMode) print("Error fetching pets: $e");
-        return _mockPets;
+        return _mockPets.where((p) => p.userEmail.toLowerCase() == email).toList();
       }
     } else {
-      return _mockPets;
+      return _mockPets.where((p) => p.userEmail.toLowerCase() == email).toList();
     }
   }
 
@@ -547,6 +631,42 @@ class FirebaseService {
     }
   }
 
+  Future<void> updatePet(Pet pet) async {
+    if (_isFirebaseInitialized) {
+      try {
+        await FirebaseFirestore.instance.collection('pets').doc(pet.id).update(pet.toMap());
+      } catch (e) {
+        if (kDebugMode) print("Error updating pet: $e");
+        final idx = _mockPets.indexWhere((p) => p.id == pet.id);
+        if (idx != -1) {
+          _mockPets[idx] = pet;
+          await _saveMockPets();
+        }
+      }
+    } else {
+      final idx = _mockPets.indexWhere((p) => p.id == pet.id);
+      if (idx != -1) {
+        _mockPets[idx] = pet;
+        await _saveMockPets();
+      }
+    }
+  }
+
+  Future<void> deletePet(String id) async {
+    if (_isFirebaseInitialized) {
+      try {
+        await FirebaseFirestore.instance.collection('pets').doc(id).delete();
+      } catch (e) {
+        if (kDebugMode) print("Error deleting pet: $e");
+        _mockPets.removeWhere((p) => p.id == id);
+        await _saveMockPets();
+      }
+    } else {
+      _mockPets.removeWhere((p) => p.id == id);
+      await _saveMockPets();
+    }
+  }
+
   // --- Styles API (Dynamic Catalogue) ---
   Future<List<ArtStyle>> getStyles() async {
     if (_isFirebaseInitialized) {
@@ -555,7 +675,10 @@ class FirebaseService {
         if (snapshot.docs.isEmpty) {
           return _mockStyles;
         }
-        return snapshot.docs.map((doc) => ArtStyle.fromMap(doc.data())).toList();
+        final list = snapshot.docs.map((doc) => ArtStyle.fromMap(doc.data())).toList();
+        final idsToRemove = {'realeza', 'cosmico', 'cyberpunk', 'acuarela', 'steampunk', 'kawaii'};
+        list.removeWhere((s) => idsToRemove.contains(s.id));
+        return list;
       } catch (e) {
         if (kDebugMode) print("Error fetching styles: $e");
         return _mockStyles;
@@ -776,6 +899,87 @@ class FirebaseService {
     } else {
       _mockStyles.removeWhere((s) => s.id == id);
       await _saveMockStyles();
+    }
+  }
+
+  Future<void> updateProfile({required String name, required String photoPath}) async {
+    final prefs = await SharedPreferences.getInstance();
+    _currentUserName = name;
+    _currentUserPhoto = photoPath;
+    await prefs.setString('user_name', name);
+    await prefs.setString('user_photo', photoPath);
+
+    if (_isFirebaseInitialized) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          await user.updateDisplayName(name);
+          await user.updatePhotoURL(photoPath);
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+            'name': name,
+            'photoUrl': photoPath,
+          });
+        } catch (e) {
+          if (kDebugMode) print("Error updating Firebase profile: $e");
+        }
+      }
+    } else {
+      // Mock db update
+      final usersJson = prefs.getString('mock_users');
+      if (usersJson != null) {
+        try {
+          List<dynamic> users = jsonDecode(usersJson);
+          final normalizedEmail = currentUserEmail?.trim().toLowerCase();
+          final idx = users.indexWhere((u) => u['email'].toString().toLowerCase() == normalizedEmail);
+          if (idx != -1) {
+            users[idx]['name'] = name;
+            users[idx]['photoUrl'] = photoPath;
+            await prefs.setString('mock_users', jsonEncode(users));
+          }
+        } catch (e) {
+          if (kDebugMode) print("Error updating mock profile: $e");
+        }
+      }
+    }
+  }
+
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    if (_isFirebaseInitialized) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && user.email != null) {
+        try {
+          AuthCredential credential = EmailAuthProvider.credential(
+            email: user.email!,
+            password: currentPassword,
+          );
+          await user.reauthenticateWithCredential(credential);
+          await user.updatePassword(newPassword);
+        } catch (e) {
+          throw Exception("Error al cambiar contraseña en Firebase: $e");
+        }
+      } else {
+        throw Exception("No hay usuario autenticado.");
+      }
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      final usersJson = prefs.getString('mock_users');
+      if (usersJson != null) {
+        List<dynamic> users = jsonDecode(usersJson);
+        final normalizedEmail = currentUserEmail?.trim().toLowerCase();
+        final idx = users.indexWhere((u) => u['email'].toString().toLowerCase() == normalizedEmail);
+        if (idx != -1) {
+          final storedPassword = users[idx]['password'];
+          if (storedPassword != currentPassword) {
+            throw Exception("La contraseña actual es incorrecta.");
+          }
+          users[idx]['password'] = newPassword;
+          await prefs.setString('mock_users', jsonEncode(users));
+        } else {
+          throw Exception("Usuario no encontrado en la base de datos.");
+        }
+      } else {
+        throw Exception("Base de datos no inicializada.");
+      }
     }
   }
 }

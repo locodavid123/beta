@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -36,7 +37,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Creaciones'),
+        title: Text(state.translate('history_title')),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -70,7 +71,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$totalCreated obras creadas',
+                          state.translate('history_created_count', params: {'count': totalCreated.toString()}),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -79,7 +80,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '$distinctStyles estilos distintos • $distinctPets mascotas',
+                          state.translate('history_summary_sub', params: {
+                            'styles': distinctStyles.toString(),
+                            'pets': distinctPets.toString(),
+                          }),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 12,
@@ -108,7 +112,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   margin: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
                     label: Text(
-                      filter,
+                      filter == 'Todos' ? state.translate('history_filter_all') : filter,
                       style: TextStyle(
                         color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[700]),
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -141,7 +145,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: filteredCreations.isEmpty
                 ? Center(
                     child: Text(
-                      'No hay creaciones registradas.',
+                      state.translate('history_no_creations'),
                       style: TextStyle(color: Colors.grey[500]),
                     ),
                   )
@@ -150,7 +154,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     itemCount: filteredCreations.length,
                     itemBuilder: (context, index) {
                       final creation = filteredCreations[index];
-                      return _buildCreationItem(context, creation);
+                      return _buildCreationItem(context, creation, state);
                     },
                   ),
           ),
@@ -159,10 +163,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildCreationItem(BuildContext context, Creation creation) {
+  Widget _buildCreationItem(BuildContext context, Creation creation, AppStateProvider state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateStr = DateFormat('h:mm a').format(creation.date);
-    final dayStr = _formatDay(creation.date);
+    final dayStr = _formatDay(creation.date, state);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -184,12 +188,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
             // Image Thumbnail
             ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                creation.imagePath,
-                width: 70,
-                height: 70,
-                fit: BoxFit.cover,
-              ),
+              child: creation.imagePath.startsWith('assets/')
+                  ? Image.asset(
+                      creation.imagePath,
+                      width: 70,
+                      height: 70,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.file(
+                      File(creation.imagePath),
+                      width: 70,
+                      height: 70,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 70,
+                        height: 70,
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
+                      ),
+                    ),
             ),
             const SizedBox(width: 14),
             // Info
@@ -220,18 +237,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       color: AppTheme.primaryColor.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Generado con IA ',
-                          style: TextStyle(
+                          state.translate('history_badge_ia'),
+                          style: const TextStyle(
                             color: AppTheme.primaryColor,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Icon(Icons.auto_awesome, color: AppTheme.primaryColor, size: 10),
+                        const Icon(Icons.auto_awesome, color: AppTheme.primaryColor, size: 10),
                       ],
                     ),
                   ),
@@ -245,7 +262,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   icon: const Icon(Icons.download, size: 18),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Guardado en Galería.')),
+                      SnackBar(content: Text(state.translate('history_saved_gallery'))),
                     );
                   },
                 ),
@@ -253,7 +270,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   icon: const Icon(Icons.share, size: 18),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Enlace copiado.')),
+                      SnackBar(content: Text(state.translate('history_link_copied'))),
                     );
                   },
                 ),
@@ -265,18 +282,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  String _formatDay(DateTime date) {
+  String _formatDay(DateTime date, AppStateProvider state) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final checkDate = DateTime(date.year, date.month, date.day);
 
     if (checkDate == today) {
-      return 'Hoy';
+      return state.translate('history_day_today');
     } else if (checkDate == yesterday) {
-      return 'Ayer';
+      return state.translate('history_day_yesterday');
     } else {
-      return DateFormat('d MMM', 'es').format(date);
+      final localeCode = state.language == 'English'
+          ? 'en'
+          : state.language == 'Português'
+              ? 'pt'
+              : 'es';
+      return DateFormat('d MMM', localeCode).format(date);
     }
   }
 }

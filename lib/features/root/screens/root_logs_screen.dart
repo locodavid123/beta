@@ -32,7 +32,7 @@ class _RootLogsScreenState extends State<RootLogsScreen> with SingleTickerProvid
 
     // Simulated log audit list
     final List<Map<String, dynamic>> allLogs = [
-      {'level': 'INFO', 'message': "usuario@test.com generó 'Realeza Imperial'", 'time': 'Hace 2 min'},
+      {'level': 'INFO', 'message': "usuario@test.com generó 'Corte Oso de Peluche'", 'time': 'Hace 2 min'},
       {'level': 'INFO', 'message': 'Nueva cuenta registrada: María G.', 'time': 'Ayer 12:45'},
       {'level': 'ERROR', 'message': 'Fallo API Gemini en simulación #334', 'time': 'Ayer 10:15'},
       {'level': 'WARN', 'message': 'Reglas Firestore actualizadas', 'time': 'Hace 3 días'},

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
@@ -7,6 +8,8 @@ import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../root/screens/root_dashboard_screen.dart';
 import 'settings_screen.dart';
 import 'add_pet_screen.dart';
+import 'edit_profile_screen.dart';
+import 'privacy_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -54,49 +57,64 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        // Circular initials VL with camera icon
-                        Stack(
-                          children: [
-                            Container(
-                              width: 90,
-                              height: 90,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.2),
-                                border: Border.all(color: Colors.white, width: 3),
+                        // Circular initials VL or profile photo with camera icon
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                            );
+                          },
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 90,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  border: Border.all(color: Colors.white, width: 3),
+                                ),
+                                child: ClipOval(
+                                  child: state.userPhoto.isNotEmpty
+                                      ? (state.userPhoto.startsWith('assets/')
+                                          ? Image.asset(
+                                              state.userPhoto,
+                                              width: 90,
+                                              height: 90,
+                                              fit: BoxFit.cover,
+                                            )
+                                          : Image.file(
+                                              File(state.userPhoto),
+                                              width: 90,
+                                              height: 90,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) =>
+                                                  _buildInitials(state.userName),
+                                            ))
+                                      : _buildInitials(state.userName),
+                                ),
                               ),
-                              child: Center(
-                                child: Text(
-                                  state.userName.isNotEmpty
-                                      ? state.userName.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
-                                      : 'VL',
-                                  style: const TextStyle(
+                              // Yellow camera overlay
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppTheme.goldAccent,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    size: 14,
                                     color: Colors.white,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                            ),
-                            // Yellow camera overlay
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppTheme.goldAccent,
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                         // User Name
@@ -137,11 +155,11 @@ class ProfileScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildStatColumn('${state.creations.length}', 'Creaciones'),
+                      _buildStatColumn('${state.creations.length}', state.translate('profile_creations')),
                       _buildDivider(isDark),
-                      _buildStatColumn('${state.pets.length}', 'Mascotas'),
+                      _buildStatColumn('${state.pets.length}', state.translate('profile_pets')),
                       _buildDivider(isDark),
-                      _buildStatColumn('${state.credits}', 'Créditos'),
+                      _buildStatColumn('${state.credits}', state.translate('profile_credits')),
                     ],
                   ),
                 ),
@@ -156,7 +174,7 @@ class ProfileScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Mis Mascotas',
+                    state.translate('profile_my_pets'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 18),
                   ),
                   TextButton.icon(
@@ -167,9 +185,9 @@ class ProfileScreen extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.add, size: 16, color: AppTheme.primaryColor),
-                    label: const Text(
-                      'Agregar',
-                      style: TextStyle(
+                    label: Text(
+                      state.translate('profile_btn_add'),
+                      style: const TextStyle(
                         color: AppTheme.primaryColor,
                         fontWeight: FontWeight.bold,
                       ),
@@ -184,7 +202,7 @@ class ProfileScreen extends StatelessWidget {
                 ? Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     child: Text(
-                      'No tienes mascotas registradas.',
+                      state.translate('profile_no_pets'),
                       style: TextStyle(color: Colors.grey[500]),
                     ),
                   )
@@ -212,12 +230,25 @@ class ProfileScreen extends StatelessWidget {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.asset(
-                                pet.imagePath,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                              ),
+                              child: pet.imagePath.startsWith('assets/')
+                                  ? Image.asset(
+                                      pet.imagePath,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.file(
+                                      File(pet.imagePath),
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                                        'assets/images/luna_shih_tzu.png',
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -244,13 +275,14 @@ class ProfileScreen extends StatelessWidget {
                             ),
                             TextButton(
                               onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Editar ${pet.name} (Simulado)')),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => AddPetScreen(pet: pet)),
                                 );
                               },
-                              child: const Text(
-                                'Editar',
-                                style: TextStyle(
+                              child: Text(
+                                state.translate('profile_btn_edit'),
+                                style: const TextStyle(
                                   color: AppTheme.primaryColor,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
@@ -270,7 +302,7 @@ class ProfileScreen extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Administración',
+                    state.translate('profile_admin_header'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 18),
                   ),
                 ),
@@ -291,8 +323,8 @@ class ProfileScreen extends StatelessWidget {
                     context,
                     icon: Icons.admin_panel_settings_outlined,
                     iconColor: state.userRole == 'root' ? const Color(0xFF2563EB) : const Color(0xFFE61D63),
-                    title: state.userRole == 'root' ? 'Volver al Panel Root' : 'Volver al Panel Admin',
-                    subtitle: 'Regresar a la consola de administración',
+                    title: state.userRole == 'root' ? state.translate('profile_root_btn') : state.translate('profile_admin_btn'),
+                    subtitle: state.userRole == 'root' ? 'Console Root' : 'Console Admin',
                     onTap: () {
                       if (state.userRole == 'root') {
                         Navigator.pushAndRemoveUntil(
@@ -320,7 +352,7 @@ class ProfileScreen extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Cuenta',
+                  state.translate('profile_section_account'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 18),
                 ),
               ),
@@ -338,11 +370,12 @@ class ProfileScreen extends StatelessWidget {
                     _buildAccountItem(
                       context,
                       icon: Icons.person_outline,
-                      title: 'Editar perfil',
-                      subtitle: 'Nombre y datos personales',
+                      title: state.translate('profile_edit_profile'),
+                      subtitle: state.translate('profile_edit_profile_sub'),
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Editar perfil (Simulado)')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const EditProfileScreen()),
                         );
                       },
                     ),
@@ -350,11 +383,12 @@ class ProfileScreen extends StatelessWidget {
                     _buildAccountItem(
                       context,
                       icon: Icons.lock_outline,
-                      title: 'Privacidad',
-                      subtitle: 'Contraseña y seguridad',
+                      title: state.translate('profile_privacy'),
+                      subtitle: state.translate('profile_privacy_sub'),
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Privacidad (Simulado)')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PrivacyScreen()),
                         );
                       },
                     ),
@@ -362,8 +396,8 @@ class ProfileScreen extends StatelessWidget {
                     _buildAccountItem(
                       context,
                       icon: Icons.settings_outlined,
-                      title: 'Ajustes',
-                      subtitle: 'Preferencias de la aplicación',
+                      title: state.translate('profile_settings'),
+                      subtitle: state.translate('profile_settings_sub'),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -376,23 +410,23 @@ class ProfileScreen extends StatelessWidget {
                       context,
                       icon: Icons.logout_outlined,
                       iconColor: AppTheme.redAccent,
-                      title: 'Cerrar sesión',
+                      title: state.translate('profile_logout'),
                       titleColor: AppTheme.redAccent,
-                      subtitle: 'Salir de la aplicación',
+                      subtitle: state.translate('profile_logout_sub'),
                       onTap: () {
                         showDialog(
                           context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('¿Cerrar sesión?'),
-                            content: const Text('¿Estás seguro de que quieres salir de la aplicación?'),
+                          builder: (dialogContext) => AlertDialog(
+                            title: Text(state.translate('profile_logout_confirm')),
+                            content: Text(state.translate('profile_logout_desc')),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancelar'),
+                                onPressed: () => Navigator.pop(dialogContext),
+                                child: Text(state.translate('profile_btn_cancel')),
                               ),
                               TextButton(
                                 onPressed: () async {
-                                  Navigator.pop(context);
+                                  Navigator.pop(dialogContext);
                                   await state.logoutUser();
                                   if (context.mounted) {
                                     Navigator.pushAndRemoveUntil(
@@ -402,7 +436,10 @@ class ProfileScreen extends StatelessWidget {
                                     );
                                   }
                                 },
-                                child: const Text('Salir', style: TextStyle(color: AppTheme.redAccent)),
+                                child: Text(
+                                  state.translate('profile_btn_exit'),
+                                  style: const TextStyle(color: AppTheme.redAccent),
+                                ),
                               ),
                             ],
                           ),
@@ -497,6 +534,21 @@ class ProfileScreen extends StatelessWidget {
         color: Colors.grey[400],
       ),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildInitials(String name) {
+    return Center(
+      child: Text(
+        name.isNotEmpty
+            ? name.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
+            : 'VL',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

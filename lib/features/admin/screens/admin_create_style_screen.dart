@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/style.dart';
@@ -39,6 +41,29 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
     _difficulty = style?.difficulty ?? 'Medio';
     _isPublished = style != null ? (style.status == 'activo') : true;
     _isHot = style?.isHot ?? false;
+  }
+
+  Future<void> _pickStyleImage() async {
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _imagePath = pickedFile.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar imagen: $e')),
+        );
+      }
+    }
   }
 
   String _buildPreviewPrompt() {
@@ -100,7 +125,7 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                   onChanged: (val) => setState(() => _name = val.trim()),
                   validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa el nombre del estilo' : null,
                   decoration: const InputDecoration(
-                    hintText: 'Ej: Realeza Imperial',
+                    hintText: 'Ej: Corte Cachorro',
                     border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
                     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
@@ -125,7 +150,7 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                               border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
                               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             ),
-                            items: ['Clásico', 'Fantasía', 'Sci-Fi', 'Arte', 'Steampunk', 'Cute']
+                            items: ['Clásico', 'Cute', 'Fantasía']
                                 .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
                                 .toList(),
                           ),
@@ -188,16 +213,60 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                 // Example Image URL / Local path
                 _buildLabel('URL / Ruta de imagen de ejemplo'),
                 const SizedBox(height: 8),
-                TextFormField(
-                  initialValue: _imagePath,
-                  onChanged: (val) => setState(() => _imagePath = val.trim()),
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa la ruta de imagen' : null,
-                  decoration: const InputDecoration(
-                    hintText: 'assets/images/realeza_imperial.png',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        key: ValueKey(_imagePath),
+                        initialValue: _imagePath,
+                        onChanged: (val) => setState(() => _imagePath = val.trim()),
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa la ruta de imagen' : null,
+                        decoration: const InputDecoration(
+                          hintText: 'assets/images/corte_cachorro.png o archivo local',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _pickStyleImage,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Subir'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                  ],
                 ),
+                if (_imagePath.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: _imagePath.startsWith('assets/')
+                        ? Image.asset(
+                            _imagePath,
+                            height: 120,
+                            width: 120,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.file(
+                            File(_imagePath),
+                            height: 120,
+                            width: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              height: 120,
+                              width: 120,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.broken_image, color: Colors.grey),
+                            ),
+                          ),
+                  ),
+                ],
                 const SizedBox(height: 18),
 
                 // Coat selection

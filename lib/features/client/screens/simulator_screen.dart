@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/pet.dart';
 import '../../../core/models/style.dart';
 import '../../../core/models/creation.dart';
+import '../../../core/services/gemini_service.dart';
 import 'add_pet_screen.dart';
 
 class SimulatorScreen extends StatefulWidget {
@@ -20,6 +23,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   ArtStyle? _selectedStyle;
   Creation? _latestCreation;
   String? _errorMessage;
+
+  File? _newPetImageFile;
+  bool _isNewPetVerified = false;
 
   @override
   void initState() {
@@ -41,29 +47,55 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   }
 
   Future<void> _handleGenerate() async {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
     setState(() {
       _errorMessage = null;
       _latestCreation = null;
     });
 
-    if (_selectedPet == null) {
-      setState(() {
-        _errorMessage = "Por favor selecciona una mascota.";
-      });
-      return;
+    Pet? petToUse;
+    if (_petSourceIndex == 0) {
+      if (_selectedPet == null) {
+        setState(() {
+          _errorMessage = state.translate('sim_err_select_pet');
+        });
+        return;
+      }
+      petToUse = _selectedPet;
+    } else {
+      if (_newPetImageFile == null || !_isNewPetVerified) {
+        setState(() {
+          _errorMessage = state.language == 'English'
+              ? 'Please upload and verify a photo first.'
+              : state.language == 'Português'
+                  ? 'Por favor, carregue e verifique uma foto primeiro.'
+                  : 'Por favor, carga y verifica una foto primero.';
+        });
+        return;
+      }
+      petToUse = Pet(
+        id: 'temp_pet_${DateTime.now().millisecondsSinceEpoch}',
+        name: state.language == 'English' ? 'My Shih Tzu' : state.language == 'Português' ? 'Meu Shih Tzu' : 'Mi Shih Tzu',
+        breed: 'Shih Tzu',
+        age: '',
+        gender: '',
+        notes: '',
+        imagePath: _newPetImageFile!.path,
+        isVerifiedByAI: true,
+        userEmail: state.userEmail,
+      );
     }
 
     if (_selectedStyle == null) {
       setState(() {
-        _errorMessage = "Por favor selecciona un estilo.";
+        _errorMessage = state.translate('sim_err_select_style');
       });
       return;
     }
 
-    final state = Provider.of<AppStateProvider>(context, listen: false);
     try {
       final result = await state.generateArt(
-        pet: _selectedPet!,
+        pet: petToUse!,
         style: _selectedStyle!,
       );
       setState(() {
@@ -91,12 +123,12 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Simulador de Estilos'),
-            SizedBox(width: 6),
-            Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 18),
+            Text(state.translate('sim_title')),
+            const SizedBox(width: 6),
+            const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 18),
           ],
         ),
         centerTitle: true,
@@ -118,7 +150,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   const Icon(Icons.stars, color: AppTheme.goldAccent, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Tienes ${state.credits} créditos disponibles',
+                    state.translate('sim_credits_avail', params: {'count': state.credits.toString()}),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -131,20 +163,20 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             const SizedBox(height: 20),
 
             // STEP 1: Elige tu mascota
-            _buildStepTitle('1. Elige tu mascota'),
+            _buildStepTitle(state.translate('sim_step1')),
             const SizedBox(height: 12),
             // Source Toggle Buttons
             Row(
               children: [
                 _buildSourceButton(
                   index: 0,
-                  label: 'Mascota Guardada',
+                  label: state.translate('sim_source_saved'),
                   icon: Icons.pets,
                 ),
                 const SizedBox(width: 12),
                 _buildSourceButton(
                   index: 1,
-                  label: 'Nueva Foto',
+                  label: state.translate('sim_source_new'),
                   icon: Icons.camera_alt,
                 ),
               ],
@@ -161,7 +193,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         );
                       },
                       icon: const Icon(Icons.add),
-                      label: const Text('Registra tu primera mascota'),
+                      label: Text(state.translate('sim_register_first')),
                     )
                   : Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -194,50 +226,115 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       ),
                     ),
             ] else ...[
-              // Upload photo simulation
-              InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Simulando carga de foto. Elige una Mascota Guardada para procesar.')),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2), width: 1.5),
-                  ),
-                  child: const Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.cloud_upload_outlined, color: AppTheme.primaryColor),
-                        SizedBox(width: 8),
-                        Text(
-                          'Cargar foto desde galería',
-                          style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.bold,
+              // Upload photo flow
+              _newPetImageFile == null
+                  ? InkWell(
+                      onTap: () => _showImageSourceActionSheet(context),
+                      child: Container(
+                        width: double.infinity,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2), width: 1.5),
+                        ),
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.cloud_upload_outlined, color: AppTheme.primaryColor),
+                              const SizedBox(width: 8),
+                              Text(
+                                state.translate('sim_upload_gallery'),
+                                style: const TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.cardDark : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.file(
+                              _newPetImageFile!,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  state.language == 'English' ? 'Temporary Pet' : state.language == 'Português' ? 'Pet Temporário' : 'Mascota Temporal',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      _isNewPetVerified ? Icons.verified : Icons.verified_user_outlined,
+                                      color: _isNewPetVerified ? AppTheme.greenAccent : Colors.grey,
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _isNewPetVerified
+                                          ? state.translate('pet_badge_verified')
+                                          : state.translate('pet_badge_unverified'),
+                                      style: TextStyle(
+                                        color: _isNewPetVerified ? AppTheme.greenAccent : Colors.grey,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.cached, color: AppTheme.primaryColor),
+                            onPressed: () => _showImageSourceActionSheet(context),
+                            tooltip: state.language == 'English' ? 'Change Photo' : state.language == 'Português' ? 'Alterar Foto' : 'Cambiar Foto',
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
             ],
             const SizedBox(height: 24),
 
             // STEP 2: Elige un estilo
-            _buildStepTitle('2. Elige un estilo'),
+            _buildStepTitle(state.translate('sim_step2')),
             const SizedBox(height: 12),
             // Horizontal styles selection list
             SizedBox(
               height: 100,
               child: state.styles.isEmpty
-                  ? Center(child: Text('Cargando estilos...', style: TextStyle(color: Colors.grey[500])))
+                  ? Center(child: Text(state.translate('sim_loading_styles'), style: TextStyle(color: Colors.grey[500])))
                   : ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: state.styles.length,
@@ -273,12 +370,25 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.asset(
-                                    style.imagePath,
-                                    height: 50,
-                                    width: 50,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  child: style.imagePath.startsWith('assets/')
+                                      ? Image.asset(
+                                          style.imagePath,
+                                          height: 50,
+                                          width: 50,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.file(
+                                          File(style.imagePath),
+                                          height: 50,
+                                          width: 50,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Container(
+                                            height: 50,
+                                            width: 50,
+                                            color: Colors.grey[200],
+                                            child: const Icon(Icons.broken_image, color: Colors.grey, size: 20),
+                                          ),
+                                        ),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
@@ -301,7 +411,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             const SizedBox(height: 24),
 
             // STEP 3: Resultado
-            _buildStepTitle('3. Resultado'),
+            _buildStepTitle(state.translate('sim_step3')),
             const SizedBox(height: 12),
 
             if (_errorMessage != null) ...[
@@ -363,7 +473,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                           ),
                           const SizedBox(height: 24),
                           Text(
-                            'Generando obra de arte...',
+                            state.translate('sim_generating_art'),
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 12),
@@ -378,7 +488,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '${(state.generationProgress * 100).toInt()}% completado',
+                            state.translate('sim_percent_completed', params: {'progress': (state.generationProgress * 100).toInt().toString()}),
                             style: const TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
@@ -388,12 +498,25 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     // Display result
                     ClipRRect(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      child: Image.asset(
-                        _latestCreation!.imagePath,
-                        height: 250,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
+                      child: _latestCreation!.imagePath.startsWith('assets/')
+                          ? Image.asset(
+                              _latestCreation!.imagePath,
+                              height: 250,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.file(
+                              File(_latestCreation!.imagePath),
+                              height: 250,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                height: 250,
+                                width: double.infinity,
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
+                              ),
+                            ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(20),
@@ -423,11 +546,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                 child: OutlinedButton.icon(
                                   onPressed: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Obra descargada con éxito.')),
+                                      SnackBar(content: Text(state.translate('sim_success_download'))),
                                     );
                                   },
                                   icon: const Icon(Icons.download, size: 18),
-                                  label: const Text('Descargar'),
+                                  label: Text(state.translate('sim_download')),
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(color: Colors.grey[300]!),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -439,11 +562,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                 child: OutlinedButton.icon(
                                   onPressed: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Enlace de compartir copiado.')),
+                                      SnackBar(content: Text(state.translate('sim_success_share'))),
                                     );
                                   },
                                   icon: const Icon(Icons.share, size: 18),
-                                  label: const Text('Compartir'),
+                                  label: Text(state.translate('sim_share')),
                                   style: OutlinedButton.styleFrom(
                                     side: const BorderSide(color: AppTheme.primaryColor),
                                     foregroundColor: AppTheme.primaryColor,
@@ -467,7 +590,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                           Icon(Icons.auto_awesome, color: Colors.grey[300], size: 48),
                           const SizedBox(height: 16),
                           Text(
-                            'Elige una mascota y un estilo artístico, luego haz clic en "Generar Estilo" para comenzar.',
+                            state.translate('sim_empty_state_desc'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.grey[500],
@@ -512,14 +635,14 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 20),
-                        SizedBox(width: 10),
+                        const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 20),
+                        const SizedBox(width: 10),
                         Text(
-                          'Generar Estilo',
-                          style: TextStyle(
+                          state.translate('sim_btn_generate'),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -560,6 +683,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
           setState(() {
             _petSourceIndex = index;
             _latestCreation = null;
+            _errorMessage = null;
           });
         },
         child: Container(
@@ -596,5 +720,307 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         ),
       ),
     );
+  }
+
+  void _showImageSourceActionSheet(BuildContext context) {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state.translate('pet_sheet_title'),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                state.translate('pet_sheet_desc'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.camera);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.camera_alt_outlined, color: AppTheme.primaryColor, size: 28),
+                            const SizedBox(height: 8),
+                            Text(
+                              state.translate('edit_profile_camera'),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.gallery);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.photo_library_outlined, color: AppTheme.primaryColor, size: 28),
+                            const SizedBox(height: 8),
+                            Text(
+                              state.translate('edit_profile_gallery'),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    try {
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      final file = File(pickedFile.path);
+      await _runVerification(file);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(state.translate('pet_error_pick', params: {'error': e.toString()})),
+            backgroundColor: AppTheme.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _runVerification(File file) async {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppTheme.primaryColor),
+              const SizedBox(height: 16),
+              Text(
+                state.translate('pet_verifying_title'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.translate('pet_verifying_desc'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    GeminiResult result;
+
+    if (state.geminiApiKey.trim().isNotEmpty) {
+      result = await GeminiService.verifyShihTzu(file, state.geminiApiKey.trim());
+    } else {
+      // Discard loading dialog to show simulation choices
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      final isShihTzuSimulated = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: AppTheme.goldAccent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(state.translate('pet_sim_title')),
+              ),
+            ],
+          ),
+          content: Text(state.translate('pet_sim_desc')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(state.translate('pet_sim_reject'), style: const TextStyle(color: AppTheme.redAccent)),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(state.translate('pet_sim_accept')),
+            ),
+          ],
+        ),
+      );
+
+      // Brief loading simulation
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => PopScope(
+            canPop: false,
+            child: AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: AppTheme.primaryColor),
+                  const SizedBox(height: 16),
+                  Text(
+                    state.translate('pet_sim_processing'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      await Future.delayed(const Duration(milliseconds: 1200));
+
+      if (isShihTzuSimulated == true) {
+        result = GeminiResult(
+          isShihTzu: true,
+          breed: 'Shih Tzu',
+          message: state.language == 'English' 
+              ? 'Excellent! Your pet has been verified as a Shih Tzu.' 
+              : state.language == 'Português'
+                  ? 'Excelente! Seu pet foi verificado como um Shih Tzu.'
+                  : '¡Excelente! Se ha verificado que tu mascota es un Shih Tzu.',
+        );
+      } else {
+        result = GeminiResult(
+          isShihTzu: false,
+          breed: 'Pug',
+          message: state.language == 'English'
+              ? 'The uploaded photo seems to be of the Pug breed. This application is exclusively for Shih Tzus.'
+              : state.language == 'Português'
+                  ? 'A foto enviada parece ser da raça Pug. Este aplicativo é de uso exclusivo para Shih Tzus.'
+                  : 'La foto cargada parece ser de la raza Pug. Esta aplicación es de uso exclusivo para Shih Tzus.',
+        );
+      }
+    }
+
+    if (mounted) {
+      Navigator.pop(context); // Dismiss the loading dialog
+    }
+
+    if (result.isShihTzu) {
+      setState(() {
+        _newPetImageFile = file;
+        _isNewPetVerified = true;
+        _errorMessage = null;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.greenAccent,
+            content: Text(result.message),
+          ),
+        );
+      }
+    } else {
+      setState(() {
+        _newPetImageFile = null;
+        _isNewPetVerified = false;
+      });
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: AppTheme.redAccent, size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(state.translate('pet_verify_failed_title')),
+                ),
+              ],
+            ),
+            content: Text(
+              '${result.message}\n\n${state.translate('pet_verify_failed_desc')}',
+            ),
+            actions: [
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.redAccent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: Text(state.translate('pet_btn_understood')),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 }

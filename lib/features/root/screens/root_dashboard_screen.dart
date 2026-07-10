@@ -223,7 +223,7 @@ class _RootDashboardScreenState extends State<RootDashboardScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Tienes control completo sobre todos los módulos, usuarios y configuraciones de Stylize Me.',
+                          'Tienes control completo sobre todos los módulos, usuarios y configuraciones de Shih Tzu App.',
                           style: TextStyle(
                             color: isDark ? Colors.white70 : Colors.black87,
                             fontSize: 12,

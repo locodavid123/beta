@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
@@ -16,14 +17,24 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  String _getCategoryTranslationKey(String category) {
+    switch (category) {
+      case 'Todos': return 'cat_all';
+      case 'Fantasía': return 'cat_fantasy';
+      case 'Arte': return 'cat_art';
+      case 'Clásico': return 'cat_classic';
+      case 'Steampunk': return 'cat_steampunk';
+      case 'Sci-Fi': return 'cat_scifi';
+      case 'Cute': return 'cat_cute';
+      default: return category;
+    }
+  }
+
   final List<String> _categories = [
     'Todos',
-    'Fantasía',
-    'Arte',
     'Clásico',
-    'Steampunk',
-    'Sci-Fi',
     'Cute',
+    'Fantasía',
   ];
 
   @override
@@ -47,7 +58,7 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Catálogo de Estilos'),
+        title: Text(state.translate('catalog_title')),
         centerTitle: true,
         actions: [
           IconButton(
@@ -71,7 +82,7 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
               },
               style: TextStyle(color: isDark ? Colors.white : Colors.black87),
               decoration: InputDecoration(
-                hintText: 'Buscar estilos...',
+                hintText: state.translate('catalog_search_hint'),
                 hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                 prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
                 filled: true,
@@ -100,7 +111,7 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                   margin: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
                     label: Text(
-                      cat,
+                      state.translate(_getCategoryTranslationKey(cat)),
                       style: TextStyle(
                         color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[700]),
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -132,10 +143,10 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
           Expanded(
             child: filteredStyles.isEmpty
                 ? Center(
-                    child: Text(
-                      'No se encontraron estilos en esta categoría.',
-                      style: TextStyle(color: Colors.grey[500]),
-                    ),
+                      child: Text(
+                        state.translate('catalog_empty_msg'),
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
                   )
                 : GridView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -161,70 +172,77 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = Provider.of<AppStateProvider>(context, listen: false);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Content
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Style Image
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Image.asset(
-                    style.imagePath,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () => _showStyleDetailsBottomSheet(context, style),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.cardDark : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Content
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Style Image
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    child: style.imagePath.startsWith('assets/')
+                        ? Image.asset(
+                            style.imagePath,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.file(
+                            File(style.imagePath),
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey[200],
+                              width: double.infinity,
+                              height: double.infinity,
+                              child: const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                            ),
+                          ),
                   ),
                 ),
-              ),
-              // Info
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      style.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          style.category,
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 11,
-                          ),
+                // Info
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        style.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                        // Small arrow button
-                        GestureDetector(
-                          onTap: () {
-                            // Navigate to simulator with style pre-selected
-                            // We can push to the simulator tab
-                            state.setNavIndex(2);
-                            // We will save pre-selected style in state if desired, but we can do that in simulator using direct index / controller logic
-                          },
-                          child: Container(
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            state.translate(_getCategoryTranslationKey(style.category)),
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 11,
+                            ),
+                          ),
+                          // Details info icon
+                          Container(
                             width: 24,
                             height: 24,
                             decoration: BoxDecoration(
@@ -232,53 +250,306 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
-                              Icons.arrow_forward,
+                              Icons.info_outline,
                               size: 14,
                               color: AppTheme.primaryColor,
                             ),
                           ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // Hot Tag Badge
+            if (style.isHot)
+              Positioned(
+                top: 10,
+                left: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.goldAccent,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.local_fire_department, color: Colors.white, size: 10),
+                      SizedBox(width: 2),
+                      Text(
+                        'Hot',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showStyleDetailsBottomSheet(BuildContext context, ArtStyle style) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.bgDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Pull handle indicator
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              // Big Image
+              Container(
+                height: 220,
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: style.imagePath.startsWith('assets/')
+                      ? Image.asset(
+                          style.imagePath,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.file(
+                          File(style.imagePath),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Title & Category
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        style.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (style.isHot) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.goldAccent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.local_fire_department, color: Colors.white, size: 10),
+                            SizedBox(width: 2),
+                            Text(
+                              'HOT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Badges
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildDetailBadge(
+                      context,
+                      Icons.category_outlined,
+                      state.translate(_getCategoryTranslationKey(style.category)),
+                    ),
+                    _buildDetailBadge(
+                      context,
+                      Icons.pets_outlined,
+                      style.coatType,
+                    ),
+                    _buildDetailBadge(
+                      context,
+                      Icons.star_outline_rounded,
+                      style.difficulty,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Description Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  state.language == 'English'
+                      ? 'About this style'
+                      : state.language == 'Português'
+                          ? 'Sobre este estilo'
+                          : 'Sobre este estilo',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              // Description Content
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  style.description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Action Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    // Close button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey[300]!),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text(
+                          state.language == 'English'
+                              ? 'Close'
+                              : state.language == 'Português'
+                                  ? 'Fechar'
+                                  : 'Cerrar',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Try in simulator button
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            state.setNavIndex(2);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: Text(
+                            state.language == 'English'
+                                ? 'Try Simulator'
+                                : state.language == 'Português'
+                                    ? 'Provar Simulador'
+                                    : 'Probar Simulador',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
 
-          // Hot Tag Badge
-          if (style.isHot)
-            Positioned(
-              top: 10,
-              left: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.goldAccent,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 5,
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.local_fire_department, color: Colors.white, size: 10),
-                    SizedBox(width: 2),
-                    Text(
-                      'Hot',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+  Widget _buildDetailBadge(BuildContext context, IconData icon, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF261D3B) : const Color(0xFFF4F0FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppTheme.primaryColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryColor,
             ),
+          ),
         ],
       ),
     );

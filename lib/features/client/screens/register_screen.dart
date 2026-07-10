@@ -13,6 +13,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -52,15 +53,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return AppTheme.greenAccent;
   }
 
-  String get _passwordStrengthText {
+  String _passwordStrengthText(AppStateProvider state) {
     final strength = _passwordStrength;
     if (strength == 0.0) return '';
-    if (strength < 0.4) return 'Contraseña débil (mínimo 6 caracteres)';
-    if (strength < 0.8) return 'Contraseña media';
-    return 'Contraseña segura';
+    if (strength < 0.4) return state.translate('register_password_weak');
+    if (strength < 0.8) return state.translate('register_password_medium');
+    return state.translate('register_password_strong');
   }
 
   Future<void> _handleRegister() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     final state = Provider.of<AppStateProvider>(context, listen: false);
     setState(() {
       _errorMessage = null;
@@ -69,28 +73,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    final confirmPassword = _confirmPasswordController.text;
-
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      setState(() {
-        _errorMessage = "Todos los campos son obligatorios.";
-      });
-      return;
-    }
-
-    if (password != confirmPassword) {
-      setState(() {
-        _errorMessage = "Las contraseñas no coinciden.";
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      setState(() {
-        _errorMessage = "La contraseña debe tener al menos 6 caracteres.";
-      });
-      return;
-    }
 
     try {
       await state.registerUser(email, password, name);
@@ -122,9 +104,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Crear cuenta',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          state.translate('register_title'),
+          style: const TextStyle(color: Colors.white),
         ),
         centerTitle: true,
       ),
@@ -145,12 +127,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header
                     Text(
-                      'Únete a Stylize Me 🎨',
+                      '${state.translate('register_welcome')} 🎨',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontSize: 26,
                             letterSpacing: -0.5,
@@ -158,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Crea tu cuenta para comenzar',
+                      state.translate('register_subtitle'),
                       style: TextStyle(
                         fontSize: 14,
                         color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -191,33 +175,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ],
 
                     // Full Name Field
-                    _buildLabel('Nombre completo'),
+                    _buildLabel(state.translate('register_name')),
                     const SizedBox(height: 8),
                     _buildTextField(
                       controller: _nameController,
-                      hintText: 'Tu nombre',
+                      hintText: state.translate('register_name_hint'),
                       keyboardType: TextInputType.name,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return state.translate('register_val_name');
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     // Email Field
-                    _buildLabel('Correo electrónico'),
+                    _buildLabel(state.translate('login_email')),
                     const SizedBox(height: 8),
                     _buildTextField(
                       controller: _emailController,
-                      hintText: 'tu@correo.com',
+                      hintText: state.translate('login_email_hint'),
                       keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return state.translate('login_val_email');
+                        }
+                        final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                        if (!emailRegExp.hasMatch(value.trim())) {
+                          return state.translate('login_val_email_valid');
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     // Password Field
-                    _buildLabel('Contraseña'),
+                    _buildLabel(state.translate('login_password')),
                     const SizedBox(height: 8),
                     _buildTextField(
                       controller: _passwordController,
-                      hintText: '********',
+                      hintText: state.translate('login_password_hint'),
                       obscureText: _obscurePassword,
                       onChanged: (val) => setState(() {}),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return state.translate('login_val_password');
+                        }
+                        if (value.length < 6) {
+                          return state.translate('login_val_password_length');
+                        }
+                        return null;
+                      },
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -257,7 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _passwordStrengthText,
+                            _passwordStrengthText(state),
                             style: TextStyle(
                               fontSize: 12,
                               color: _passwordStrengthColor,
@@ -270,12 +279,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
 
                     // Confirm Password Field
-                    _buildLabel('Confirmar contraseña'),
+                    _buildLabel(state.translate('register_confirm_password')),
                     const SizedBox(height: 8),
                     _buildTextField(
                       controller: _confirmPasswordController,
-                      hintText: '********',
+                      hintText: state.translate('login_password_hint'),
                       obscureText: _obscureConfirmPassword,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return state.translate('register_val_confirm');
+                        }
+                        if (value != _passwordController.text) {
+                          return state.translate('register_val_mismatch');
+                        }
+                        return null;
+                      },
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -307,9 +325,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         child: state.isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'Crear cuenta',
-                                style: TextStyle(
+                            : Text(
+                                state.translate('register_btn'),
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -323,7 +341,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          '¿Ya tienes cuenta? ',
+                          '${state.translate('register_has_account')} ',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
@@ -336,9 +354,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               MaterialPageRoute(builder: (context) => const LoginScreen()),
                             );
                           },
-                          child: const Text(
-                            'Inicia sesión',
-                            style: TextStyle(
+                          child: Text(
+                            state.translate('register_login'),
+                            style: const TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -351,7 +369,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // T&C Footer
                     Center(
                       child: Text(
-                        'Al registrarte aceptas los Términos y la Política de Privacidad',
+                        state.translate('register_terms'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11,
@@ -363,6 +381,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
+            ),
             ),
           ),
         ],
@@ -387,6 +406,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     Widget? suffixIcon,
     TextInputType? keyboardType,
     Function(String)? onChanged,
+    FormFieldValidator<String>? validator,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextFormField(
@@ -395,6 +415,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       keyboardType: keyboardType,
       onChanged: onChanged,
       style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      validator: validator,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
@@ -404,6 +425,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppTheme.redAccent, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppTheme.redAccent, width: 2),
         ),
         suffixIcon: suffixIcon,
       ),

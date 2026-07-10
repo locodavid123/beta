@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
     final state = Provider.of<AppStateProvider>(context);
 
     return MaterialApp(
-      title: 'Stylize Me',
+      title: 'Shih Tzu App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

@@ -14,15 +14,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showLanguageDialog() {
     showDialog(
       context: context,
-      builder: (context) {
-        final state = Provider.of<AppStateProvider>(context);
+      builder: (dialogContext) {
+        final state = Provider.of<AppStateProvider>(dialogContext);
         return SimpleDialog(
-          title: const Text('Seleccionar Idioma'),
+          title: Text(state.translate('settings_language')),
           children: ['Español', 'English', 'Português'].map((lang) {
             return SimpleDialogOption(
               onPressed: () {
                 state.setLanguage(lang);
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               },
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -46,36 +46,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ajustes'),
+        title: Text(state.translate('settings_title')),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         children: [
           // APARIENCIA
-          _buildSectionHeader('Apariencia'),
+          _buildSectionHeader(state.translate('settings_header_appearance')),
           _buildSettingCard([
             _buildSwitchTile(
               icon: Icons.dark_mode_outlined,
-              title: 'Modo Oscuro',
-              subtitle: 'Tema de la aplicación',
+              title: state.translate('settings_dark_mode'),
+              subtitle: state.translate('settings_dark_mode_sub'),
               value: state.isDarkMode,
               onChanged: (val) => state.toggleDarkMode(val),
             ),
             _buildDivider(isDark),
             _buildNavigationTile(
               icon: Icons.language_outlined,
-              title: 'Idioma',
+              title: state.translate('settings_language'),
               trailingText: state.language,
               onTap: _showLanguageDialog,
             ),
@@ -83,20 +80,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // NOTIFICACIONES
-          _buildSectionHeader('Notificaciones'),
+          _buildSectionHeader(state.translate('settings_header_notif')),
           _buildSettingCard([
             _buildSwitchTile(
               icon: Icons.notifications_active_outlined,
-              title: 'Notificaciones push',
-              subtitle: 'Alertas de la app',
+              title: state.translate('settings_notif_push'),
+              subtitle: state.translate('settings_notif_push_sub'),
               value: state.pushNotifications,
               onChanged: (val) => state.setPushNotifications(val),
             ),
             _buildDivider(isDark),
             _buildSwitchTile(
               icon: Icons.mail_outline_outlined,
-              title: 'Correos',
-              subtitle: 'Novedades y ofertas',
+              title: state.translate('settings_notif_email'),
+              subtitle: state.translate('settings_notif_email_sub'),
               value: state.emailNotifications,
               onChanged: (val) => state.setEmailNotifications(val),
             ),
@@ -105,33 +102,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // CUENTA
-          _buildSectionHeader('Cuenta'),
+          _buildSectionHeader(state.translate('settings_header_account')),
           _buildSettingCard([
             _buildNavigationTile(
               icon: Icons.delete_sweep_outlined,
               iconColor: AppTheme.redAccent,
-              title: 'Limpiar historial',
-              trailingText: 'Borrar creaciones locales',
+              title: state.translate('settings_clear_history'),
+              subtitle: state.translate('settings_clear_history_sub'),
               onTap: () {
                 showDialog(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('¿Limpiar historial?'),
-                    content: const Text('Esta acción borrará todas tus creaciones guardadas localmente. No se puede deshacer.'),
+                  builder: (dialogContext) => AlertDialog(
+                    title: Text(state.translate('settings_clear_confirm')),
+                    content: Text(state.translate('settings_clear_desc')),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancelar'),
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: Text(state.translate('profile_btn_cancel')),
                       ),
                       TextButton(
                         onPressed: () {
                           state.clearHistory();
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Historial limpiado con éxito.')),
+                            SnackBar(
+                              content: Text(
+                                state.translate('settings_clear_success'),
+                              ),
+                            ),
                           );
                         },
-                        child: const Text('Borrar todo', style: TextStyle(color: AppTheme.redAccent)),
+                        child: Text(
+                          state.translate('settings_btn_delete_all'),
+                          style: const TextStyle(color: AppTheme.redAccent),
+                        ),
                       ),
                     ],
                   ),
@@ -168,9 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: children,
-        ),
+        child: Column(children: children),
       ),
     );
   }
@@ -221,8 +223,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required IconData icon,
     Color iconColor = AppTheme.primaryColor,
     required String title,
+    String? subtitle,
     Color? titleColor,
-    required String trailingText,
+    String? trailingText,
     required VoidCallback onTap,
   }) {
     return ListTile(
@@ -243,14 +246,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: titleColor,
         ),
       ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: const TextStyle(color: Colors.grey, fontSize: 11),
+            )
+          : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            trailingText,
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-          ),
-          const SizedBox(width: 8),
+          if (trailingText != null)
+            Text(
+              trailingText,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          if (trailingText != null) const SizedBox(width: 8),
           Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey[400]),
         ],
       ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
@@ -9,6 +11,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final state = Provider.of<AppStateProvider>(context);
 
     return Scaffold(
       body: Container(
@@ -62,7 +65,7 @@ class WelcomeScreen extends StatelessWidget {
                       const SizedBox(height: 24),
                       // Title
                       Text(
-                        'Stylize Me',
+                        state.translate('welcome_title'),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontSize: 34,
                               color: Colors.white,
@@ -72,11 +75,11 @@ class WelcomeScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       // Subtitle
                       Text(
-                        'Transforma a tu mascota\nen obra de arte con IA',
+                        state.translate('welcome_subtitle'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Colors.white,
                           fontWeight: FontWeight.w400,
                           height: 1.3,
                         ),
@@ -88,21 +91,21 @@ class WelcomeScreen extends StatelessWidget {
                         children: [
                           _buildBadge(
                             context,
-                            '✨ Gemini AI',
+                            state.translate('welcome_badge_gemini'),
                             const Color(0xFFFFF3CD),
                             const Color(0xFF856404),
                           ),
                           const SizedBox(width: 8),
                           _buildBadge(
                             context,
-                            '🎨 Estilos únicos',
+                            state.translate('welcome_badge_styles'),
                             const Color(0xFFE2E3E5),
                             const Color(0xFF383D41),
                           ),
                           const SizedBox(width: 8),
                           _buildBadge(
                             context,
-                            '🐕 Shih Tzu',
+                            state.translate('welcome_badge_shih_tzu'),
                             const Color(0xFFD1ECF1),
                             const Color(0xFF0C5460),
                           ),
@@ -140,7 +143,7 @@ class WelcomeScreen extends StatelessWidget {
                       children: [
                         // Welcome text
                         Text(
-                          'Bienvenido a Stylize Me',
+                          state.translate('welcome_heading'),
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                 fontSize: 24,
                                 letterSpacing: -0.5,
@@ -148,7 +151,7 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'La app para reimaginar a tu Shih Tzu con estilos artísticos únicos generados por inteligencia artificial.',
+                          state.translate('welcome_desc'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,
@@ -180,9 +183,9 @@ class WelcomeScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                             ),
-                            child: const Text(
-                              'Comenzar ahora',
-                              style: TextStyle(
+                            child: Text(
+                              state.translate('welcome_btn_start'),
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -212,9 +215,9 @@ class WelcomeScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                             ),
-                            child: const Text(
-                              'Ya tengo cuenta → Iniciar sesión',
-                              style: TextStyle(
+                            child: Text(
+                              state.translate('welcome_btn_login'),
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -225,7 +228,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     // Terms and conditions
                     Text(
-                      'Al continuar aceptas nuestros Términos y Condiciones',
+                      state.translate('welcome_terms'),
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark ? Colors.grey[500] : Colors.grey[500],

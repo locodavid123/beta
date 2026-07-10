@@ -1,10 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/models/pet.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/gemini_service.dart';
 
 class AddPetScreen extends StatefulWidget {
-  const AddPetScreen({super.key});
+  final Pet? pet;
+  const AddPetScreen({super.key, this.pet});
 
   @override
   State<AddPetScreen> createState() => _AddPetScreenState();
@@ -16,7 +21,21 @@ class _AddPetScreenState extends State<AddPetScreen> {
   final _ageController = TextEditingController();
   final _notesController = TextEditingController();
   String _selectedGender = 'Macho'; // Macho / Hembra
-  bool _isPhotoAdded = false;
+  File? _imageFile;
+  bool _isVerified = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.pet != null) {
+      _nameController.text = widget.pet!.name;
+      _breedController.text = widget.pet!.breed;
+      _ageController.text = widget.pet!.age;
+      _notesController.text = widget.pet!.notes;
+      _selectedGender = widget.pet!.gender;
+      _isVerified = widget.pet!.isVerifiedByAI;
+    }
+  }
 
   @override
   void dispose() {
@@ -32,51 +51,124 @@ class _AddPetScreenState extends State<AddPetScreen> {
     final breed = _breedController.text.trim();
     final age = _ageController.text.trim();
     final notes = _notesController.text.trim();
+    final state = Provider.of<AppStateProvider>(context, listen: false);
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor ingresa el nombre de la mascota.')),
+        SnackBar(content: Text(state.translate('pet_validation_name'))),
       );
       return;
     }
 
-    final state = Provider.of<AppStateProvider>(context, listen: false);
-    
-    // Choose fallback photo based on breed or randomly
-    String petPhoto = 'assets/images/luna_shih_tzu.png';
-    if (name.toLowerCase() == 'max') {
-      petPhoto = 'assets/images/max_shih_tzu.png';
+    final isEdit = widget.pet != null;
+    final hasImage = _imageFile != null || (isEdit && widget.pet!.imagePath.isNotEmpty);
+
+    if (!hasImage || !_isVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(state.translate('pet_validation_photo')),
+          backgroundColor: AppTheme.redAccent,
+        ),
+      );
+      return;
     }
 
-    await state.registerPet(
-      name: name,
-      breed: breed.isEmpty ? 'Shih Tzu' : breed,
-      age: age.isEmpty ? '2 años' : age,
-      gender: _selectedGender,
-      notes: notes,
-      imagePath: petPhoto,
-    );
+    final finalImagePath = _imageFile != null ? _imageFile!.path : widget.pet!.imagePath;
+
+    if (isEdit) {
+      final updatedPet = Pet(
+        id: widget.pet!.id,
+        name: name,
+        breed: breed.isEmpty ? 'Shih Tzu' : breed,
+        age: age.isEmpty ? '2 años' : age,
+        gender: _selectedGender,
+        notes: notes,
+        imagePath: finalImagePath,
+        isVerifiedByAI: _isVerified,
+        userEmail: widget.pet!.userEmail,
+      );
+      await state.updatePet(updatedPet);
+    } else {
+      await state.registerPet(
+        name: name,
+        breed: breed.isEmpty ? 'Shih Tzu' : breed,
+        age: age.isEmpty ? '2 años' : age,
+        gender: _selectedGender,
+        notes: notes,
+        imagePath: finalImagePath,
+      );
+    }
 
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('¡$name registrada con éxito!')),
+        SnackBar(
+          content: Text(isEdit
+              ? state.translate('pet_success_updated', params: {'name': name})
+              : state.translate('pet_success_registered', params: {'name': name})),
+          backgroundColor: AppTheme.greenAccent,
+        ),
       );
+    }
+  }
+
+  Future<void> _handleDelete() async {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    final petName = widget.pet?.name ?? 'la mascota';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(state.translate('pet_confirm_delete')),
+        content: Text(state.translate('pet_confirm_delete_desc', params: {'name': petName})),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(state.translate('profile_btn_cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(state.translate('pet_btn_delete'), style: const TextStyle(color: AppTheme.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (!mounted) return;
+      await state.deletePet(widget.pet!.id);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(state.translate('pet_success_deleted', params: {'name': petName})),
+            backgroundColor: AppTheme.greenAccent,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final state = Provider.of<AppStateProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nueva Mascota'),
+        title: Text(state.translate(widget.pet != null ? 'pet_title_edit' : 'pet_title_new')),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: widget.pet != null
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppTheme.redAccent),
+                  onPressed: _handleDelete,
+                ),
+              ]
+            : null,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -88,14 +180,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
               child: Column(
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isPhotoAdded = true;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Foto de la mascota cargada.')),
-                      );
-                    },
+                    onTap: () => _showImageSourceActionSheet(context),
                     child: Container(
                       width: 110,
                       height: 110,
@@ -103,29 +188,58 @@ class _AddPetScreenState extends State<AddPetScreen> {
                         shape: BoxShape.circle,
                         color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
                         border: Border.all(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                          color: _isVerified
+                              ? AppTheme.greenAccent.withValues(alpha: 0.3)
+                              : AppTheme.primaryColor.withValues(alpha: 0.15),
                           width: 2,
                         ),
                       ),
-                      child: _isPhotoAdded
-                          ? const Center(
-                              child: Icon(Icons.check_circle, color: AppTheme.greenAccent, size: 40),
+                      child: _imageFile != null
+                          ? ClipOval(
+                              child: Image.file(
+                                _imageFile!,
+                                width: 110,
+                                height: 110,
+                                fit: BoxFit.cover,
+                              ),
                             )
-                          : const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.camera_alt, color: AppTheme.primaryColor, size: 28),
-                                SizedBox(height: 6),
-                                Text(
-                                  '+ Subir foto',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.primaryColor,
-                                  ),
+                          : (widget.pet != null && widget.pet!.imagePath.isNotEmpty)
+                              ? ClipOval(
+                                  child: widget.pet!.imagePath.startsWith('assets/')
+                                      ? Image.asset(
+                                          widget.pet!.imagePath,
+                                          width: 110,
+                                          height: 110,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.file(
+                                          File(widget.pet!.imagePath),
+                                          width: 110,
+                                          height: 110,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Image.asset(
+                                            'assets/images/luna_shih_tzu.png',
+                                            width: 110,
+                                            height: 110,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.camera_alt, color: AppTheme.primaryColor, size: 28),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      state.translate('pet_btn_upload'),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -133,19 +247,29 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.greenAccent.withValues(alpha: 0.1),
+                      color: _isVerified
+                          ? AppTheme.greenAccent.withValues(alpha: 0.1)
+                          : Colors.grey.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.greenAccent.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: _isVerified
+                            ? AppTheme.greenAccent.withValues(alpha: 0.3)
+                            : Colors.grey.withValues(alpha: 0.3),
+                      ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.verified, color: AppTheme.greenAccent, size: 12),
-                        SizedBox(width: 4),
+                        Icon(
+                          _isVerified ? Icons.verified : Icons.verified_user_outlined,
+                          color: _isVerified ? AppTheme.greenAccent : Colors.grey,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          'Verificación con IA',
+                          _isVerified ? state.translate('pet_badge_verified') : state.translate('pet_badge_unverified'),
                           style: TextStyle(
-                            color: AppTheme.greenAccent,
+                            color: _isVerified ? AppTheme.greenAccent : Colors.grey,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -159,38 +283,45 @@ class _AddPetScreenState extends State<AddPetScreen> {
             const SizedBox(height: 28),
 
             // Form Fields
-            _buildLabel('Nombre de la mascota'),
+            _buildLabel(state.translate('pet_lbl_name')),
             const SizedBox(height: 8),
             _buildTextField(
               controller: _nameController,
-              hintText: 'Ej: Luna, Max, Coco...',
+              hintText: state.translate('pet_name_hint'),
             ),
             const SizedBox(height: 16),
 
-            _buildLabel('Raza'),
+            _buildLabel(state.translate('pet_lbl_breed')),
             const SizedBox(height: 8),
             _buildTextField(
               controller: _breedController,
-              hintText: 'Shih Tzu (verificada)',
+              hintText: state.translate('pet_breed_hint'),
+              readOnly: true,
               suffixIcon: Container(
                 margin: const EdgeInsets.all(10),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  color: _isVerified
+                      ? AppTheme.greenAccent.withValues(alpha: 0.1)
+                      : AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'IA activa ',
+                      _isVerified ? state.translate('pet_ia_active') : state.translate('pet_ia_pending'),
                       style: TextStyle(
-                        color: AppTheme.primaryColor,
+                        color: _isVerified ? AppTheme.greenAccent : AppTheme.primaryColor,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Icon(Icons.bolt, color: AppTheme.primaryColor, size: 10),
+                    Icon(
+                      _isVerified ? Icons.check : Icons.bolt,
+                      color: _isVerified ? AppTheme.greenAccent : AppTheme.primaryColor,
+                      size: 10,
+                    ),
                   ],
                 ),
               ),
@@ -204,11 +335,11 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildLabel('Edad'),
+                      _buildLabel(state.translate('pet_lbl_age')),
                       const SizedBox(height: 8),
                       _buildTextField(
                         controller: _ageController,
-                        hintText: 'Ej: 2 años',
+                        hintText: state.translate('pet_age_hint'),
                       ),
                     ],
                   ),
@@ -218,7 +349,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildLabel('Género'),
+                      _buildLabel(state.translate('pet_lbl_gender')),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -234,11 +365,11 @@ class _AddPetScreenState extends State<AddPetScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildLabel('Notas adicionales (opcional)'),
+            _buildLabel(state.translate('pet_lbl_notes')),
             const SizedBox(height: 8),
             _buildTextField(
               controller: _notesController,
-              hintText: 'Alergias, preferences de corte...',
+              hintText: state.translate('pet_notes_hint'),
               maxLines: 4,
             ),
             const SizedBox(height: 36),
@@ -270,14 +401,14 @@ class _AddPetScreenState extends State<AddPetScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.pets, size: 18),
-                      SizedBox(width: 10),
+                      const Icon(Icons.pets, size: 18),
+                      const SizedBox(width: 10),
                       Text(
-                        'Guardar Mascota',
-                        style: TextStyle(
+                        state.translate(widget.pet != null ? 'pet_btn_save_changes' : 'pet_btn_save'),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -309,11 +440,13 @@ class _AddPetScreenState extends State<AddPetScreen> {
     required String hintText,
     int maxLines = 1,
     Widget? suffixIcon,
+    bool readOnly = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      readOnly: readOnly,
       style: TextStyle(color: isDark ? Colors.white : Colors.black87),
       decoration: InputDecoration(
         hintText: hintText,
@@ -331,8 +464,10 @@ class _AddPetScreenState extends State<AddPetScreen> {
   }
 
   Widget _buildGenderButton(String gender) {
+    final state = Provider.of<AppStateProvider>(context);
     final isSelected = _selectedGender == gender;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final displayedText = gender == 'Macho' ? state.translate('pet_gender_m') : state.translate('pet_gender_f');
 
     return Expanded(
       child: GestureDetector(
@@ -354,7 +489,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
           ),
           child: Center(
             child: Text(
-              gender,
+              displayedText,
               style: TextStyle(
                 color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                 fontWeight: FontWeight.bold,
@@ -365,5 +500,308 @@ class _AddPetScreenState extends State<AddPetScreen> {
         ),
       ),
     );
+  }
+
+  void _showImageSourceActionSheet(BuildContext context) {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state.translate('pet_sheet_title'),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                state.translate('pet_sheet_desc'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.camera);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.camera_alt_outlined, color: AppTheme.primaryColor, size: 28),
+                            const SizedBox(height: 8),
+                            Text(
+                              state.translate('edit_profile_camera'),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.gallery);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.photo_library_outlined, color: AppTheme.primaryColor, size: 28),
+                            const SizedBox(height: 8),
+                            Text(
+                              state.translate('edit_profile_gallery'),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    try {
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      final file = File(pickedFile.path);
+      await _runVerification(file);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(state.translate('pet_error_pick', params: {'error': e.toString()})),
+            backgroundColor: AppTheme.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _runVerification(File file) async {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppTheme.primaryColor),
+              const SizedBox(height: 16),
+              Text(
+                state.translate('pet_verifying_title'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.translate('pet_verifying_desc'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    GeminiResult result;
+
+    if (state.geminiApiKey.trim().isNotEmpty) {
+      result = await GeminiService.verifyShihTzu(file, state.geminiApiKey.trim());
+    } else {
+      // Discard loading dialog to show simulation choices
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      final isShihTzuSimulated = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: AppTheme.goldAccent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(state.translate('pet_sim_title')),
+              ),
+            ],
+          ),
+          content: Text(state.translate('pet_sim_desc')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(state.translate('pet_sim_reject'), style: const TextStyle(color: AppTheme.redAccent)),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(state.translate('pet_sim_accept')),
+            ),
+          ],
+        ),
+      );
+
+      // Brief loading simulation
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => PopScope(
+            canPop: false,
+            child: AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: AppTheme.primaryColor),
+                  const SizedBox(height: 16),
+                  Text(
+                    state.translate('pet_sim_processing'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      await Future.delayed(const Duration(milliseconds: 1200));
+
+      if (isShihTzuSimulated == true) {
+        result = GeminiResult(
+          isShihTzu: true,
+          breed: 'Shih Tzu',
+          message: state.language == 'English' 
+              ? 'Excellent! Your pet has been verified as a Shih Tzu.' 
+              : state.language == 'Português'
+                  ? 'Excelente! Seu pet foi verificado como um Shih Tzu.'
+                  : '¡Excelente! Se ha verificado que tu mascota es un Shih Tzu.',
+        );
+      } else {
+        result = GeminiResult(
+          isShihTzu: false,
+          breed: 'Pug',
+          message: state.language == 'English'
+              ? 'The uploaded photo seems to be of the Pug breed. This application is exclusively for Shih Tzus.'
+              : state.language == 'Português'
+                  ? 'A foto enviada parece ser da raça Pug. Este aplicativo é de uso exclusivo para Shih Tzus.'
+                  : 'La foto cargada parece ser de la raza Pug. Esta aplicación es de uso exclusivo para Shih Tzus.',
+        );
+      }
+    }
+
+    if (mounted) {
+      Navigator.pop(context); // Dismiss the loading dialog
+    }
+
+    if (result.isShihTzu) {
+      setState(() {
+        _imageFile = file;
+        _isVerified = true;
+        _breedController.text = 'Shih Tzu';
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.greenAccent,
+            content: Text(result.message),
+          ),
+        );
+      }
+    } else {
+      setState(() {
+        _imageFile = null;
+        _isVerified = false;
+        _breedController.clear();
+      });
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: AppTheme.redAccent, size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(state.translate('pet_verify_failed_title')),
+                ),
+              ],
+            ),
+            content: Text(
+              '${result.message}\n\n${state.translate('pet_verify_failed_desc')}',
+            ),
+            actions: [
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.redAccent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: Text(state.translate('pet_btn_understood')),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 }

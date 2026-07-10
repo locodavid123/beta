@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
@@ -251,20 +252,35 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
             // Thumbnail image
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.asset(
-                style.imagePath,
-                width: 72,
-                height: 72,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 72,
-                    height: 72,
-                    color: primaryColor.withValues(alpha: 0.1),
-                    child: Icon(Icons.broken_image, color: primaryColor),
-                  );
-                },
-              ),
+              child: style.imagePath.startsWith('assets/')
+                  ? Image.asset(
+                      style.imagePath,
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 72,
+                          height: 72,
+                          color: primaryColor.withValues(alpha: 0.1),
+                          child: Icon(Icons.broken_image, color: primaryColor),
+                        );
+                      },
+                    )
+                  : Image.file(
+                      File(style.imagePath),
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 72,
+                          height: 72,
+                          color: primaryColor.withValues(alpha: 0.1),
+                          child: Icon(Icons.broken_image, color: primaryColor),
+                        );
+                      },
+                    ),
             ),
             const SizedBox(width: 16),
 

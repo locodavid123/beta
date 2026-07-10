@@ -13,6 +13,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -26,6 +27,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     final state = Provider.of<AppStateProvider>(context, listen: false);
     setState(() {
       _errorMessage = null;
@@ -66,9 +70,9 @@ class _LoginScreenState extends State<LoginScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Iniciar sesión',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          state.translate('login_title'),
+          style: const TextStyle(color: Colors.white),
         ),
         centerTitle: true,
       ),
@@ -90,12 +94,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header
                     Text(
-                      '¡Hola de nuevo! 👋',
+                      '${state.translate('login_welcome')} 👋',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontSize: 26,
                             letterSpacing: -0.5,
@@ -103,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Ingresa tus datos para continuar',
+                      state.translate('login_subtitle'),
                       style: TextStyle(
                         fontSize: 14,
                         color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -136,22 +142,41 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
 
                     // Email Field
-                    _buildLabel('Correo electrónico'),
+                    _buildLabel(state.translate('login_email')),
                     const SizedBox(height: 8),
                     _buildTextField(
                       controller: _emailController,
-                      hintText: 'tu@correo.com',
+                      hintText: state.translate('login_email_hint'),
                       keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return state.translate('login_val_email');
+                        }
+                        final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                        if (!emailRegExp.hasMatch(value.trim())) {
+                          return state.translate('login_val_email_valid');
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 20),
 
                     // Password Field
-                    _buildLabel('Contraseña'),
+                    _buildLabel(state.translate('login_password')),
                     const SizedBox(height: 8),
                     _buildTextField(
                       controller: _passwordController,
-                      hintText: '********',
+                      hintText: state.translate('login_password_hint'),
                       obscureText: _obscurePassword,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return state.translate('login_val_password');
+                        }
+                        if (value.length < 6) {
+                          return state.translate('login_val_password_length');
+                        }
+                        return null;
+                      },
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -172,15 +197,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: TextButton(
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Enlace para restablecer enviado al correo.')),
+                            SnackBar(content: Text(state.translate('login_reset_sent'))),
                           );
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                         ),
-                        child: const Text(
-                          '¿Olvidaste tu contraseña?',
-                          style: TextStyle(
+                        child: Text(
+                          state.translate('login_forgot_password'),
+                          style: const TextStyle(
                             color: AppTheme.primaryColor,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -206,9 +231,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: state.isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'Iniciar sesión',
-                                style: TextStyle(
+                            : Text(
+                                state.translate('login_btn'),
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -224,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
-                            'o continúa con',
+                            state.translate('login_divider'),
                             style: TextStyle(
                               color: Colors.grey[500],
                               fontSize: 12,
@@ -263,9 +288,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, size: 24),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
-                              'Continuar con Google',
-                              style: TextStyle(
+                            Text(
+                              state.translate('login_google'),
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -281,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          '¿No tienes cuenta? ',
+                          '${state.translate('login_no_account')} ',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
@@ -294,9 +319,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               MaterialPageRoute(builder: (context) => const RegisterScreen()),
                             );
                           },
-                          child: const Text(
-                            'Regístrate',
-                            style: TextStyle(
+                          child: Text(
+                            state.translate('login_register'),
+                            style: const TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -309,6 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
+            ),
             ),
           ),
           // Paw prints decoration in bottom right corner
@@ -353,6 +379,7 @@ class _LoginScreenState extends State<LoginScreen> {
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
+    FormFieldValidator<String>? validator,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextFormField(
@@ -360,6 +387,7 @@ class _LoginScreenState extends State<LoginScreen> {
       obscureText: obscureText,
       keyboardType: keyboardType,
       style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      validator: validator,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
@@ -369,6 +397,14 @@ class _LoginScreenState extends State<LoginScreen> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppTheme.redAccent, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppTheme.redAccent, width: 2),
         ),
         suffixIcon: suffixIcon,
       ),

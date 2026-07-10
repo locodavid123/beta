@@ -172,7 +172,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 children: [
                   _buildLogItem(
-                    text: "cliente_prueba generó 'Realeza Imperial'",
+                    text: "cliente_prueba generó 'Corte Cachorro'",
                     time: "hace 2 min",
                     dotColor: const Color(0xFFE61D63),
                   ),

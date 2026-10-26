@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/creation.dart';
+import '../../../core/services/media_export_service.dart';
+import '../../../core/widgets/before_after_comparator.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -168,117 +170,301 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final dateStr = DateFormat('h:mm a').format(creation.date);
     final dayStr = _formatDay(creation.date, state);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.cardDark : Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+        onTap: () => _showCreationDetailModal(context, creation, state),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            // Image Thumbnail
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: creation.imagePath.startsWith('assets/')
-                  ? Image.asset(
-                      creation.imagePath,
-                      width: 70,
-                      height: 70,
-                      fit: BoxFit.cover,
-                    )
-                  : Image.file(
-                      File(creation.imagePath),
-                      width: 70,
-                      height: 70,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 70,
-                        height: 70,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 14),
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${creation.petName} • ${creation.styleName}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$dayStr, $dateStr • ❤️ ${creation.likes}',
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  // "Generado con IA" Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          state.translate('history_badge_ia'),
-                          style: const TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                // Image Thumbnail
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: creation.imagePath.startsWith('assets/')
+                      ? Image.asset(
+                          creation.imagePath,
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.file(
+                          File(creation.imagePath),
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 70,
+                            height: 70,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
                           ),
                         ),
-                        const Icon(Icons.auto_awesome, color: AppTheme.primaryColor, size: 10),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Actions
-            Column(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.download, size: 18),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.translate('history_saved_gallery'))),
-                    );
-                  },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.share, size: 18),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.translate('history_link_copied'))),
-                    );
-                  },
+                const SizedBox(width: 14),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${creation.petName} • ${creation.styleName}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$dayStr, $dateStr • ❤️ ${creation.likes}',
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // "Generado con IA" Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              state.translate('history_badge_ia'),
+                              style: const TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Icon(Icons.auto_awesome, color: AppTheme.primaryColor, size: 10),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Actions
+                Column(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.download, size: 18),
+                      tooltip: state.translate('sim_download'),
+                      onPressed: () async {
+                        try {
+                          final path = await MediaExportService.saveImageToDevice(
+                            imagePath: creation.imagePath,
+                            petName: creation.petName,
+                            styleName: creation.styleName,
+                          );
+                          final fileName = path.split(Platform.pathSeparator).last;
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: AppTheme.primaryDark,
+                                content: Text('Guardado: $fileName'),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error al guardar: $e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.share, size: 18),
+                      tooltip: state.translate('sim_share'),
+                      onPressed: () {
+                        MediaExportService.shareCreation(
+                          imagePath: creation.imagePath,
+                          petName: creation.petName,
+                          styleName: creation.styleName,
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showCreationDetailModal(BuildContext context, Creation creation, AppStateProvider state) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dateStr = DateFormat('d MMM yyyy, h:mm a').format(creation.date);
+    
+    // Resolve before image: creation.originalImagePath -> or fallback to pet
+    final pet = state.pets.where((p) => p.id == creation.petId).firstOrNull;
+    final beforeImage = creation.originalImagePath.isNotEmpty
+        ? creation.originalImagePath
+        : (pet?.imagePath ?? 'assets/images/luna_shih_tzu.png');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.cardDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[400],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${creation.petName} — ${creation.styleName}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                          ),
+                          Text(
+                            dateStr,
+                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Interactive Comparator
+                BeforeAfterComparator(
+                  beforeImagePath: beforeImage,
+                  afterImagePath: creation.imagePath,
+                  beforeLabel: state.translate('sim_before'),
+                  afterLabel: state.translate('sim_after'),
+                  height: 270,
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  creation.description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          try {
+                            final path = await MediaExportService.saveImageToDevice(
+                              imagePath: creation.imagePath,
+                              petName: creation.petName,
+                              styleName: creation.styleName,
+                            );
+                            final fileName = path.split(Platform.pathSeparator).last;
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: AppTheme.primaryDark,
+                                  content: Text('Guardado: $fileName'),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error al guardar: $e')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.download, size: 18),
+                        label: Text(state.translate('sim_download')),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          MediaExportService.shareCreation(
+                            imagePath: creation.imagePath,
+                            petName: creation.petName,
+                            styleName: creation.styleName,
+                          );
+                        },
+                        icon: const Icon(Icons.share, size: 18, color: Colors.white),
+                        label: Text(
+                          state.translate('sim_share'),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

@@ -302,6 +302,7 @@ class AppStateProvider extends ChangeNotifier {
       styleId: style.id,
       styleName: style.name,
       imagePath: resultingImagePath,
+      originalImagePath: pet.imagePath,
       date: DateTime.now(),
       likes: 12 + (DateTime.now().millisecond % 20), // random likes count
       description: desc,

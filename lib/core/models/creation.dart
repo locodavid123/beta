@@ -5,6 +5,7 @@ class Creation {
   final String styleId;
   final String styleName;
   final String imagePath;
+  final String originalImagePath;
   final DateTime date;
   final int likes;
   final bool isAiGenerated;
@@ -17,6 +18,7 @@ class Creation {
     required this.styleId,
     required this.styleName,
     required this.imagePath,
+    this.originalImagePath = '',
     required this.date,
     required this.likes,
     this.isAiGenerated = true,
@@ -31,6 +33,7 @@ class Creation {
       'styleId': styleId,
       'styleName': styleName,
       'imagePath': imagePath,
+      'originalImagePath': originalImagePath,
       'date': date.toIso8601String(),
       'likes': likes,
       'isAiGenerated': isAiGenerated,
@@ -46,6 +49,7 @@ class Creation {
       styleId: map['styleId'] ?? '',
       styleName: map['styleName'] ?? '',
       imagePath: map['imagePath'] ?? '',
+      originalImagePath: map['originalImagePath'] ?? '',
       date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
       likes: map['likes'] ?? 0,
       isAiGenerated: map['isAiGenerated'] ?? true,

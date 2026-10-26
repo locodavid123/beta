@@ -8,6 +8,8 @@ import '../../../core/models/pet.dart';
 import '../../../core/models/style.dart';
 import '../../../core/models/creation.dart';
 import '../../../core/services/gemini_service.dart';
+import '../../../core/services/media_export_service.dart';
+import '../../../core/widgets/before_after_comparator.dart';
 import 'add_pet_screen.dart';
 
 class SimulatorScreen extends StatefulWidget {
@@ -26,6 +28,8 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
 
   File? _newPetImageFile;
   bool _isNewPetVerified = false;
+  bool _isSavingImage = false;
+  bool _isSharingImage = false;
 
   @override
   void initState() {
@@ -106,6 +110,274 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         _errorMessage = e.toString().replaceAll("Exception: ", "");
       });
     }
+  }
+
+  Future<void> _handleDownload(AppStateProvider state) async {
+    if (_latestCreation == null) return;
+    setState(() {
+      _isSavingImage = true;
+    });
+
+    try {
+      final savedPath = await MediaExportService.saveImageToDevice(
+        imagePath: _latestCreation!.imagePath,
+        petName: _latestCreation!.petName,
+        styleName: _latestCreation!.styleName,
+      );
+
+      if (mounted) {
+        final fileName = savedPath.split(Platform.pathSeparator).last;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.primaryDark,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: AppTheme.goldAccent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.translate('sim_success_download'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      Text(
+                        state.translate('sim_saved_path', params: {'path': fileName}),
+                        style: const TextStyle(fontSize: 11, color: Colors.white70),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.redAccent,
+            content: Text('Error al guardar: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingImage = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleShare(AppStateProvider state) async {
+    if (_latestCreation == null) return;
+    setState(() {
+      _isSharingImage = true;
+    });
+
+    try {
+      await MediaExportService.shareCreation(
+        imagePath: _latestCreation!.imagePath,
+        petName: _latestCreation!.petName,
+        styleName: _latestCreation!.styleName,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al compartir: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSharingImage = false;
+        });
+      }
+    }
+  }
+
+  void _showGroomerCardModal(BuildContext context, AppStateProvider state) {
+    if (_latestCreation == null) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final beforeImage = _latestCreation!.originalImagePath.isNotEmpty
+        ? _latestCreation!.originalImagePath
+        : (_selectedPet?.imagePath ?? (_newPetImageFile?.path ?? ''));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.cardDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 18),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[400],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.content_cut, color: AppTheme.primaryColor),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            state.translate('sim_groomer_card_title'),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          Text(
+                            state.translate('sim_groomer_card_desc'),
+                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // Mini Before/After preview
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: BeforeAfterComparator(
+                    beforeImagePath: beforeImage,
+                    afterImagePath: _latestCreation!.imagePath,
+                    beforeLabel: state.translate('sim_before'),
+                    afterLabel: state.translate('sim_after'),
+                    height: 200,
+                    showControls: false,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Data grid: Pet & Style Details
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF130D20) : const Color(0xFFF7F5FC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.12)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildGroomerRow('🐕 Mascota:', '${_latestCreation!.petName} (Shih Tzu)'),
+                      const Divider(height: 16),
+                      _buildGroomerRow('✂️ Estilo deseado:', _latestCreation!.styleName),
+                      if (_selectedStyle != null) ...[
+                        const Divider(height: 16),
+                        _buildGroomerRow('💈 Tipo de pelaje:', _selectedStyle!.coatType),
+                        const Divider(height: 16),
+                        _buildGroomerRow('⭐ Dificultad del corte:', _selectedStyle!.difficulty),
+                      ],
+                      if (_selectedPet != null && _selectedPet!.notes.isNotEmpty) ...[
+                        const Divider(height: 16),
+                        _buildGroomerRow('📝 Notas / Alergias:', _selectedPet!.notes),
+                      ],
+                      const Divider(height: 16),
+                      Text(
+                        state.translate('sim_groomer_card_instructions'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _latestCreation!.description,
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Big Share to Groomer Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      final groomerShareText = 'Hola! Te comparto la ficha de corte para mi Shih Tzu ${_latestCreation!.petName}.\n'
+                          'Estilo deseado: "${_latestCreation!.styleName}".\n'
+                          'Notas de la mascota: ${_selectedPet?.notes.isNotEmpty == true ? _selectedPet!.notes : "Ninguna"}.\n'
+                          '¡Diseñado con Shih Tzu App! 🐕✂️';
+                      MediaExportService.shareCreation(
+                        imagePath: _latestCreation!.imagePath,
+                        petName: _latestCreation!.petName,
+                        styleName: _latestCreation!.styleName,
+                        customText: groomerShareText,
+                      );
+                    },
+                    icon: const Icon(Icons.send_rounded, color: Colors.white),
+                    label: Text(
+                      state.translate('sim_groomer_share_btn'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGroomerRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 140,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -495,40 +767,59 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       ),
                     ),
                   ] else if (_latestCreation != null) ...[
-                    // Display result
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      child: _latestCreation!.imagePath.startsWith('assets/')
-                          ? Image.asset(
-                              _latestCreation!.imagePath,
-                              height: 250,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            )
-                          : Image.file(
-                              File(_latestCreation!.imagePath),
-                              height: 250,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                height: 250,
-                                width: double.infinity,
-                                color: Colors.grey[200],
-                                child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
-                              ),
-                            ),
+                    // Interactive Before & After Comparator
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: BeforeAfterComparator(
+                        beforeImagePath: _latestCreation!.originalImagePath.isNotEmpty
+                            ? _latestCreation!.originalImagePath
+                            : (_selectedPet?.imagePath ?? (_newPetImageFile?.path ?? '')),
+                        afterImagePath: _latestCreation!.imagePath,
+                        beforeLabel: state.translate('sim_before'),
+                        afterLabel: state.translate('sim_after'),
+                        height: 280,
+                      ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '${_latestCreation!.petName} — ${_latestCreation!.styleName}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${_latestCreation!.petName} — ${_latestCreation!.styleName}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.goldAccent.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.4)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.stars, color: AppTheme.goldAccent, size: 12),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Shih Tzu Cut',
+                                      style: TextStyle(
+                                        color: AppTheme.goldAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -539,38 +830,76 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               height: 1.4,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
+
+                          // Action Buttons: Descargar, Compartir & Ficha Peluquero
                           Row(
                             children: [
+                              // Download Button
                               Expanded(
+                                flex: 3,
                                 child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(state.translate('sim_success_download'))),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.download, size: 18),
+                                  onPressed: _isSavingImage ? null : () => _handleDownload(state),
+                                  icon: _isSavingImage
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.download, size: 18),
                                   label: Text(state.translate('sim_download')),
                                   style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: Colors.grey[300]!),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    side: BorderSide(color: isDark ? Colors.white24 : Colors.grey[300]!),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
+
+                              // Share Button
                               Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(state.translate('sim_success_share'))),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.share, size: 18),
-                                  label: Text(state.translate('sim_share')),
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: AppTheme.primaryColor),
-                                    foregroundColor: AppTheme.primaryColor,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                flex: 3,
+                                child: ElevatedButton.icon(
+                                  onPressed: _isSharingImage ? null : () => _handleShare(state),
+                                  icon: _isSharingImage
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.share, size: 18, color: Colors.white),
+                                  label: Text(
+                                    state.translate('sim_share'),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryColor,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+
+                              // Groomer Card Button
+                              Tooltip(
+                                message: state.translate('sim_groomer_card'),
+                                child: InkWell(
+                                  onTap: () => _showGroomerCardModal(context, state),
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.goldAccent.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.3)),
+                                    ),
+                                    child: const Icon(
+                                      Icons.content_cut,
+                                      color: AppTheme.goldAccent,
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),

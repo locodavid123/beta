@@ -12,6 +12,8 @@ import '../../../core/services/media_export_service.dart';
 import '../../../core/widgets/before_after_comparator.dart';
 import 'add_pet_screen.dart';
 import 'tutorials_screen.dart';
+import 'coat_scanner_screen.dart';
+import '../../../core/config/app_config.dart';
 
 class SimulatorScreen extends StatefulWidget {
   const SimulatorScreen({super.key});
@@ -26,6 +28,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   ArtStyle? _selectedStyle;
   Creation? _latestCreation;
   String? _errorMessage;
+  String _selectedCoatColor = 'Dorado y Blanco';
 
   File? _newPetImageFile;
   bool _isNewPetVerified = false;
@@ -110,6 +113,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       final result = await state.generateArt(
         pet: petToUse!,
         style: _selectedStyle!,
+        coatColor: _selectedCoatColor,
       );
       setState(() {
         _latestCreation = result;
@@ -500,6 +504,67 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+
+            // AI Vision Diagnostic Recommendation Banner
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CoatScannerScreen(initialPet: _selectedPet),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primaryColor.withValues(alpha: 0.12),
+                      Colors.blueAccent.withValues(alpha: 0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.document_scanner_rounded, color: AppTheme.primaryColor, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '¿No sabes qué corte le favorece?',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Escanear lagrimales, ojos y manto con IA',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.primaryColor),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
 
             // STEP 1: Elige tu mascota
@@ -665,6 +730,68 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       ),
                     ),
             ],
+            const SizedBox(height: 14),
+
+            // Tonalidad del pelaje de tu Shih Tzu
+            Row(
+              children: [
+                const Icon(Icons.palette_outlined, size: 16, color: AppTheme.goldAccent),
+                const SizedBox(width: 6),
+                Text(
+                  state.language == 'English'
+                      ? 'Shih Tzu Coat Tone:'
+                      : state.language == 'Português'
+                          ? 'Tom da Pelagem:'
+                          : 'Tonalidad del pelaje de tu Shih Tzu:',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  'Dorado y Blanco',
+                  'Panda (Blanco y Negro)',
+                  'Tricolor',
+                  'Chocolate',
+                ].map((colorOption) {
+                  final isSelected = _selectedCoatColor == colorOption;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(
+                        colorOption,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected
+                              ? AppTheme.primaryColor
+                              : (isDark ? Colors.grey[300] : Colors.grey[700]),
+                        ),
+                      ),
+                      selected: isSelected,
+                      selectedColor: AppTheme.primaryColor.withValues(alpha: 0.18),
+                      backgroundColor: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
+                      side: BorderSide(
+                        color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (val) {
+                        if (val) {
+                          setState(() => _selectedCoatColor = colorOption);
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
             const SizedBox(height: 24),
 
             // STEP 2: Elige un estilo
@@ -672,7 +799,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             const SizedBox(height: 12),
             // Horizontal styles selection list
             SizedBox(
-              height: 100,
+              height: 124,
               child: state.styles.isEmpty
                   ? Center(child: Text(state.translate('sim_loading_styles'), style: TextStyle(color: Colors.grey[500])))
                   : ListView.builder(
@@ -690,8 +817,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                             });
                           },
                           child: Container(
-                            width: 80,
+                            width: 105,
                             margin: const EdgeInsets.only(right: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                             decoration: BoxDecoration(
                               color: isDark ? AppTheme.cardDark : Colors.white,
                               borderRadius: BorderRadius.circular(16),
@@ -701,8 +829,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.02),
-                                  blurRadius: 5,
+                                  color: isSelected
+                                      ? AppTheme.primaryColor.withValues(alpha: 0.25)
+                                      : Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: isSelected ? 8 : 4,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
@@ -714,18 +845,18 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                   child: style.imagePath.startsWith('assets/')
                                       ? Image.asset(
                                           style.imagePath,
-                                          height: 50,
-                                          width: 50,
+                                          height: 48,
+                                          width: 48,
                                           fit: BoxFit.cover,
                                         )
                                       : Image.file(
                                           File(style.imagePath),
-                                          height: 50,
-                                          width: 50,
+                                          height: 48,
+                                          width: 48,
                                           fit: BoxFit.cover,
                                           errorBuilder: (context, error, stackTrace) => Container(
-                                            height: 50,
-                                            width: 50,
+                                            height: 48,
+                                            width: 48,
                                             color: Colors.grey[200],
                                             child: const Icon(Icons.broken_image, color: Colors.grey, size: 20),
                                           ),
@@ -733,12 +864,14 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  style.name.split(' ').first,
-                                  maxLines: 1,
+                                  style.name,
+                                  maxLines: 2,
+                                  textAlign: TextAlign.center,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 11,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    height: 1.15,
                                     color: isSelected ? AppTheme.primaryColor : (isDark ? Colors.white70 : Colors.black87),
                                   ),
                                 ),
@@ -749,6 +882,33 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       },
                     ),
             ),
+            if (_selectedStyle != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Estilo seleccionado: ${_selectedStyle!.name}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // STEP 3: Resultado
@@ -1354,19 +1514,18 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
 
     GeminiResult result;
 
-    if (state.geminiApiKey.trim().isNotEmpty) {
-      result = await GeminiService.verifyShihTzu(file, state.geminiApiKey.trim());
+    final activeKey = state.geminiApiKey.trim().isNotEmpty &&
+            !state.geminiApiKey.trim().startsWith('AIzaSy')
+        ? state.geminiApiKey.trim()
+        : AppConfig.defaultGeminiApiKey.trim();
+
+    if (activeKey.isNotEmpty) {
+      result = await GeminiService.verifyShihTzu(file, activeKey);
     } else {
-      // Verificación asistida rápida y amigable sin interrumpir ni pedir claves al usuario
-      await Future.delayed(const Duration(milliseconds: 1000));
       result = GeminiResult(
-        isShihTzu: true,
-        breed: 'Shih Tzu',
-        message: state.language == 'English' 
-            ? 'Excellent! Your pet has been verified as a Shih Tzu.' 
-            : state.language == 'Português'
-                ? 'Excelente! Seu pet foi verificado como um Shih Tzu.'
-                : '¡Excelente! Se ha verificado que tu mascota es un Shih Tzu.',
+        isShihTzu: false,
+        breed: 'No configurado',
+        message: 'No se encontró una clave de Gemini activa para verificar la raza Shih Tzu.',
       );
     }
 

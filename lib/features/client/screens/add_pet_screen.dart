@@ -6,6 +6,7 @@ import '../../../core/models/pet.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/gemini_service.dart';
+import '../../../core/config/app_config.dart';
 
 class AddPetScreen extends StatefulWidget {
   final Pet? pet;
@@ -656,19 +657,18 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
     GeminiResult result;
 
-    if (state.geminiApiKey.trim().isNotEmpty) {
-      result = await GeminiService.verifyShihTzu(file, state.geminiApiKey.trim());
+    final activeKey = state.geminiApiKey.trim().isNotEmpty &&
+            !state.geminiApiKey.trim().startsWith('AIzaSy')
+        ? state.geminiApiKey.trim()
+        : AppConfig.defaultGeminiApiKey.trim();
+
+    if (activeKey.isNotEmpty) {
+      result = await GeminiService.verifyShihTzu(file, activeKey);
     } else {
-      // Verificación asistida rápida y amigable sin interrumpir ni pedir claves al usuario
-      await Future.delayed(const Duration(milliseconds: 1000));
       result = GeminiResult(
-        isShihTzu: true,
-        breed: 'Shih Tzu',
-        message: state.language == 'English' 
-            ? 'Excellent! Your pet has been verified as a Shih Tzu.' 
-            : state.language == 'Português'
-                ? 'Excelente! Seu pet foi verificado como um Shih Tzu.'
-                : '¡Excelente! Se ha verificado que tu mascota es un Shih Tzu.',
+        isShihTzu: false,
+        breed: 'No configurado',
+        message: 'No se encontró una clave de Gemini activa para verificar la raza Shih Tzu.',
       );
     }
 

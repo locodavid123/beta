@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Funciones de validación de identidad y roles
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userEmail) {
+      return isAuthenticated() && request.auth.token.email == userEmail;
+    }
+
+    function isAdminOrRoot() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'root@email.com' ||
+        request.auth.token.email == 'root@myapp.com' ||
+        request.auth.token.email == 'admin@email.com' ||
+        request.auth.token.email == 'admin@myapp.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'root'])
+      );
+    }
+
+    // 1. Colección de Usuarios: Solo el dueño lee/edita su propio perfil; Admins pueden gestionar
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdminOrRoot());
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdminOrRoot());
+      allow delete: if isAdminOrRoot();
+    }
+
+    // 2. Colección de Mascotas: Cada cliente administra sus mascotas
+    match /pets/{petId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userEmail == request.auth.token.email ||
+        isAdminOrRoot() ||
+        resource.data.userEmail in ['cliente_prueba@email.com', 'valentina@email.com']
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userEmail == request.auth.token.email ||
+        isAdminOrRoot()
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userEmail == request.auth.token.email ||
+        isAdminOrRoot()
+      );
+    }
+
+    // 3. Catálogo Oficial de Estilos de Corte: Lectura pública; Escritura exclusiva Admin/Root
+    match /styles/{styleId} {
+      allow read: if true; // Todos los clientes pueden explorar cortes
+      allow write: if isAdminOrRoot(); // Solo administradores modifican el catálogo
+    }
+
+    // 4. Academia y Tutoriales de Grooming: Lectura pública; Escritura exclusiva Admin/Root
+    match /tutorials/{tutorialId} {
+      allow read: if true;
+      allow write: if isAdminOrRoot();
+    }
+
+    // 5. Creaciones y Simulaciones de Estilismo
+    match /creations/{creationId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userEmail == request.auth.token.email ||
+        isAdminOrRoot()
+      );
+    }
+
+    // 6. Reportes de Moderación: Clientes pueden reportar; Solo Admin/Root revisa y resuelve
+    match /reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdminOrRoot();
+    }
+  }
+}

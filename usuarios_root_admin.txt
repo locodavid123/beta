@@ -1,0 +1,53 @@
+====================================================================
+           CUENTAS DE ACCESO: USUARIOS ROOT Y ADMIN
+               Shih Tzu Grooming & AI Suite
+====================================================================
+
+--------------------------------------------------------------------
+1. USUARIO SUPERUSUARIO (ROOT)
+--------------------------------------------------------------------
+   Rol:          root (Acceso total al sistema)
+   Nombre:       Root Admin
+   Correo:       root@email.com
+   Alias:        root@myapp.com
+   Contraseña:   password123
+   Créditos:     999 (Ilimitados)
+
+   Privilegios y Accesos:
+   * Consola Superusuario (Root Dashboard)
+   * Auditoría de Logs del Sistema en tiempo real
+   * Administración Global de Usuarios y reasignación de roles
+   * Configuración de Flags de red y parámetros de Gemini API
+   * Acceso simultáneo a todas las herramientas de Administrador y Cliente
+
+
+--------------------------------------------------------------------
+2. USUARIO ADMINISTRADOR GENERAL (ADMIN)
+--------------------------------------------------------------------
+   Rol:          admin (Administrador General)
+   Nombre:       Admin General
+   Correo:       admin@email.com
+   Alias:        admin@myapp.com
+   Contraseña:   password123
+   Créditos:     999 (Ilimitados)
+
+   Privilegios y Accesos:
+   * Consola de Administrador (Admin Dashboard)
+   * Gestión y edición del Catálogo Oficial de Estilos de Corte
+   * Publicación, edición y borrado de Tutoriales de Cuidado Canino
+   * Panel de Moderación de Contenido y revisión de fotos comunitarias
+   * Historial de simulaciones y métricas del sistema
+
+
+====================================================================
+INSTRUCCIONES DE INICIO DE SESIÓN
+====================================================================
+1. Abre la aplicación Shih Tzu en tu dispositivo o emulador.
+2. Ve a la pestaña "Perfil" en la barra inferior.
+3. Si estás como invitado o con otro usuario, pulsa "Cerrar Sesión".
+4. Selecciona "Iniciar Sesión".
+5. Ingresa cualquiera de los correos indicados arriba con su contraseña:
+   password123
+6. Al iniciar sesión, verás habilitado automáticamente en tu perfil el
+   botón de acceso a la Consola Root o Consola Admin según el rol.
+====================================================================

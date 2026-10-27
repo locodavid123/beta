@@ -623,7 +623,9 @@ class FirebaseService {
           {"email": "cliente_prueba@email.com", "password": "password123", "name": "Valentina López", "role": "client", "credits": 5},
           {"email": "valentina@email.com", "password": "password123", "name": "Valentina López", "role": "client", "credits": 5},
           {"email": "admin@email.com", "password": "password123", "name": "Admin General", "role": "admin", "credits": 999},
-          {"email": "root@email.com", "password": "password123", "name": "Root Admin", "role": "root", "credits": 999}
+          {"email": "root@email.com", "password": "password123", "name": "Root Admin", "role": "root", "credits": 999},
+          {"email": "admin@myapp.com", "password": "password123", "name": "Admin General", "role": "admin", "credits": 999},
+          {"email": "root@myapp.com", "password": "password123", "name": "Root Admin", "role": "root", "credits": 999}
         ];
         await prefs.setString('mock_users', jsonEncode(users));
       }

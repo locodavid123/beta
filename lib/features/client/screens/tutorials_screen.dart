@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/tutorial.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TutorialsScreen extends StatefulWidget {
   const TutorialsScreen({super.key});
@@ -542,6 +543,30 @@ class _TutorialsScreenState extends State<TutorialsScreen> {
                               ),
                             ),
                           ),
+                          // YouTube Video badge
+                          if (tutorial.videoUrl.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF0000).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.play_circle_fill_rounded, color: Color(0xFFFF0000), size: 10),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'YouTube',
+                                    style: TextStyle(
+                                      color: Color(0xFFFF0000),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           // Completed badge
                           if (isCompleted)
                             Container(
@@ -645,7 +670,14 @@ class _TutorialsScreenState extends State<TutorialsScreen> {
 
                           // Play/Pause Big Button
                           GestureDetector(
-                            onTap: () {
+                            onTap: () async {
+                              if (tutorial.videoUrl.isNotEmpty) {
+                                final uri = Uri.parse(tutorial.videoUrl.trim());
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                  return;
+                                }
+                              }
                               setSheetState(() {
                                 isPlaying = !isPlaying;
                               });
@@ -773,6 +805,40 @@ class _TutorialsScreenState extends State<TutorialsScreen> {
                               style: TextStyle(color: Colors.grey[500], fontSize: 12),
                             ),
                             const SizedBox(height: 16),
+
+                            // Direct YouTube Video Button
+                            if (tutorial.videoUrl.isNotEmpty) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final uri = Uri.parse(tutorial.videoUrl.trim());
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 22),
+                                  label: const Text(
+                                    'Ver Video Completo en YouTube',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF0000),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                            ],
 
                             // Actions Row: Favorite & Completed
                             Row(

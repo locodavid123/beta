@@ -229,11 +229,29 @@ class FirebaseService {
     }
 
     // Load tutorials
-    final tutorialsJson = prefs.getStringList('mock_tutorials_v3');
+    final tutorialsJson = prefs.getStringList('mock_tutorials_v4');
     if (tutorialsJson != null && tutorialsJson.isNotEmpty) {
       _mockTutorials.clear();
       for (var t in tutorialsJson) {
         _mockTutorials.add(Tutorial.fromMap(jsonDecode(t)));
+      }
+      // Update any default tutorials that received new videoUrls
+      final defs = _getDefaultTutorials();
+      bool updated = false;
+      for (var def in defs) {
+        final idx = _mockTutorials.indexWhere((t) => t.id == def.id);
+        if (idx != -1) {
+          if (def.videoUrl.isNotEmpty && _mockTutorials[idx].videoUrl != def.videoUrl) {
+            _mockTutorials[idx] = def;
+            updated = true;
+          }
+        } else {
+          _mockTutorials.add(def);
+          updated = true;
+        }
+      }
+      if (updated) {
+        await _saveMockTutorials();
       }
     } else {
       _mockTutorials.clear();
@@ -276,7 +294,7 @@ class FirebaseService {
   Future<void> _saveMockTutorials() async {
     final prefs = await SharedPreferences.getInstance();
     final data = _mockTutorials.map((t) => jsonEncode(t.toMap())).toList();
-    await prefs.setStringList('mock_tutorials_v3', data);
+    await prefs.setStringList('mock_tutorials_v4', data);
   }
 
   Future<void> _saveMockReports() async {
@@ -365,6 +383,7 @@ class FirebaseService {
         category: 'Cortes',
         views: 342,
         status: 'publicado',
+        videoUrl: 'https://youtu.be/f5oRAy-WARA',
         tools: [
           'Tijera recta de 7 pulgadas',
           'Tijera curva para patitas',

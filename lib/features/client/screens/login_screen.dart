@@ -51,7 +51,13 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString().replaceAll("Exception: ", "");
+        String msg = e.toString().replaceAll("Exception: ", "");
+        if (msg.contains('invalid-credential') || msg.contains('user-not-found') || msg.contains('wrong-password')) {
+          msg = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+        } else if (msg.contains('network-request-failed')) {
+          msg = 'Error de conexión. Comprueba tu acceso a internet.';
+        }
+        _errorMessage = msg;
       });
     }
   }

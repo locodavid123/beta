@@ -36,6 +36,9 @@ class FirebaseService {
 
   // Initialize service
   Future<void> init() async {
+    // ALWAYS load local cache/storage first so fallback data is immediately available
+    await _loadLocalMockData();
+
     try {
       // Try to initialize Firebase
       await Firebase.initializeApp();
@@ -46,13 +49,13 @@ class FirebaseService {
       
       // Load initial dynamic styles in Firestore if empty
       await _seedStylesInFirestore();
+      // Load initial tutorials in Firestore if empty and ensure YouTube URLs are up-to-date
+      await _seedTutorialsInFirestore();
     } catch (e) {
       _isFirebaseInitialized = false;
       if (kDebugMode) {
         print("Firebase initialization failed/skipped: $e. Falling back to local storage.");
       }
-      // Load local mock data
-      await _loadLocalMockData();
     }
   }
 
@@ -78,6 +81,42 @@ class FirebaseService {
     } catch (e) {
       if (kDebugMode) {
         print("Error seeding/migrating styles in Firestore: $e");
+      }
+    }
+  }
+
+  // Seed initial tutorials in Firestore and ensure videoUrls are updated
+  Future<void> _seedTutorialsInFirestore() async {
+    if (!_isFirebaseInitialized) return;
+    try {
+      final tutsColl = FirebaseFirestore.instance.collection('tutorials');
+      final defaultTuts = _getDefaultTutorials();
+      for (var t in defaultTuts) {
+        final doc = await tutsColl.doc(t.id).get();
+        if (!doc.exists) {
+          await tutsColl.doc(t.id).set(t.toMap());
+        } else {
+          // If already exists, verify if videoUrl needs updating
+          final data = doc.data();
+          if (data != null && t.videoUrl.isNotEmpty) {
+            final currentVideo = data['videoUrl']?.toString() ?? '';
+            if (currentVideo != t.videoUrl) {
+              await tutsColl.doc(t.id).update({
+                'videoUrl': t.videoUrl,
+                'tools': t.tools,
+                'steps': t.steps,
+                'status': 'publicado',
+              });
+            }
+          }
+        }
+      }
+      if (kDebugMode) {
+        print("Tutorials seeded/synchronized in Firestore successfully.");
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error seeding tutorials in Firestore: $e");
       }
     }
   }
@@ -932,15 +971,16 @@ class FirebaseService {
     if (_isFirebaseInitialized) {
       try {
         final snapshot = await FirebaseFirestore.instance.collection('creations').orderBy('date', descending: true).get();
-        return snapshot.docs.map((doc) => Creation.fromMap(doc.data())).toList();
+        final list = snapshot.docs.map((doc) => Creation.fromMap(doc.data())).toList();
+        return list.isNotEmpty ? list : List<Creation>.from(_mockCreations);
       } catch (e) {
         if (kDebugMode) print("Error fetching creations: $e");
-        return _mockCreations;
+        return List<Creation>.from(_mockCreations);
       }
     } else {
       // Sort mock by date desc
       _mockCreations.sort((a, b) => b.date.compareTo(a.date));
-      return _mockCreations;
+      return List<Creation>.from(_mockCreations);
     }
   }
 
@@ -961,16 +1001,40 @@ class FirebaseService {
 
   // --- Tutorials API ---
   Future<List<Tutorial>> getTutorials() async {
+    // 1. Guarantee memory has default tutorials if empty
+    if (_mockTutorials.isEmpty) {
+      _mockTutorials.addAll(_getDefaultTutorials());
+    }
+
     if (_isFirebaseInitialized) {
       try {
         final snapshot = await FirebaseFirestore.instance.collection('tutorials').get();
-        if (snapshot.docs.isEmpty) return _mockTutorials;
-        return snapshot.docs.map((doc) => Tutorial.fromMap(doc.data())).toList();
+        if (snapshot.docs.isEmpty) {
+          // If Firestore is empty, start seeding and return populated local tutorials
+          _seedTutorialsInFirestore();
+          return List<Tutorial>.from(_mockTutorials);
+        }
+        
+        final list = snapshot.docs.map((doc) => Tutorial.fromMap(doc.data())).toList();
+        
+        // Ensure that all official default tutorials (including their YouTube links)
+        // are present and accurate, merging if any are missing or have outdated links
+        final defs = _getDefaultTutorials();
+        for (var def in defs) {
+          final idx = list.indexWhere((t) => t.id == def.id);
+          if (idx == -1) {
+            list.add(def);
+          } else if (def.videoUrl.isNotEmpty && (list[idx].videoUrl.isEmpty || list[idx].videoUrl != def.videoUrl)) {
+            list[idx] = list[idx].copyWith(videoUrl: def.videoUrl);
+          }
+        }
+        return list;
       } catch (e) {
-        return _mockTutorials;
+        if (kDebugMode) print("Error fetching tutorials from Firestore: $e");
+        return List<Tutorial>.from(_mockTutorials.isNotEmpty ? _mockTutorials : _getDefaultTutorials());
       }
     } else {
-      return _mockTutorials;
+      return List<Tutorial>.from(_mockTutorials.isNotEmpty ? _mockTutorials : _getDefaultTutorials());
     }
   }
 
@@ -1024,16 +1088,20 @@ class FirebaseService {
 
   // --- Reports API ---
   Future<List<ModerationReport>> getReports() async {
+    if (_mockReports.isEmpty) {
+      _mockReports.addAll(_getDefaultReports());
+    }
     if (_isFirebaseInitialized) {
       try {
         final snapshot = await FirebaseFirestore.instance.collection('reports').get();
-        if (snapshot.docs.isEmpty) return _mockReports;
-        return snapshot.docs.map((doc) => ModerationReport.fromMap(doc.data())).toList();
+        if (snapshot.docs.isEmpty) return List<ModerationReport>.from(_mockReports);
+        final list = snapshot.docs.map((doc) => ModerationReport.fromMap(doc.data())).toList();
+        return list.isNotEmpty ? list : List<ModerationReport>.from(_mockReports);
       } catch (e) {
-        return _mockReports;
+        return List<ModerationReport>.from(_mockReports);
       }
     } else {
-      return _mockReports;
+      return List<ModerationReport>.from(_mockReports);
     }
   }
 

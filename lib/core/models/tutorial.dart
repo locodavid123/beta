@@ -52,4 +52,30 @@ class Tutorial {
       steps: map['steps'] != null ? List<String>.from(map['steps']) : const [],
     );
   }
+
+  Tutorial copyWith({
+    String? id,
+    String? title,
+    String? duration,
+    String? difficulty,
+    int? views,
+    String? status,
+    String? videoUrl,
+    String? category,
+    List<String>? tools,
+    List<String>? steps,
+  }) {
+    return Tutorial(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      duration: duration ?? this.duration,
+      difficulty: difficulty ?? this.difficulty,
+      views: views ?? this.views,
+      status: status ?? this.status,
+      videoUrl: videoUrl ?? this.videoUrl,
+      category: category ?? this.category,
+      tools: tools ?? this.tools,
+      steps: steps ?? this.steps,
+    );
+  }
 }

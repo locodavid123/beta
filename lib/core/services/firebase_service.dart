@@ -560,6 +560,7 @@ class FirebaseService {
         category: 'Cortes',
         views: 145,
         status: 'publicado',
+        videoUrl: 'https://youtu.be/tx8xQy0PYWY',
         tools: [
           'Cepillo de púas metálicas sin bolitas (Pin brush)',
           'Peine metálico con espina de latón',

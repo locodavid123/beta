@@ -15,6 +15,13 @@ class AppStateProvider extends ChangeNotifier {
   int _currentNavIndex = 0;
   int get currentNavIndex => _currentNavIndex;
 
+  // Preselected items for simulator navigation
+  ArtStyle? _selectedSimulatorStyle;
+  ArtStyle? get selectedSimulatorStyle => _selectedSimulatorStyle;
+
+  Pet? _selectedSimulatorPet;
+  Pet? get selectedSimulatorPet => _selectedSimulatorPet;
+
   // Data lists
   List<Pet> _pets = [];
   List<Pet> get pets => _pets;
@@ -27,6 +34,21 @@ class AppStateProvider extends ChangeNotifier {
 
   List<Tutorial> _tutorials = [];
   List<Tutorial> get tutorials => _tutorials;
+
+  List<String> _favoriteTutorialIds = [];
+  List<String> get favoriteTutorialIds => _favoriteTutorialIds;
+
+  List<String> _completedTutorialIds = [];
+  List<String> get completedTutorialIds => _completedTutorialIds;
+
+  bool isTutorialFavorite(String id) => _favoriteTutorialIds.contains(id);
+  bool isTutorialCompleted(String id) => _completedTutorialIds.contains(id);
+
+  double get tutorialCompletionProgress {
+    final published = _tutorials.where((t) => t.status == 'publicado').toList();
+    if (published.isEmpty) return 0.0;
+    return (_completedTutorialIds.length / published.length).clamp(0.0, 1.0);
+  }
 
   List<ModerationReport> _reports = [];
   List<ModerationReport> get reports => _reports;
@@ -92,6 +114,8 @@ class AppStateProvider extends ChangeNotifier {
     _geminiApiKey = prefs.getString('gemini_api_key') ?? '';
     _credits = prefs.getInt('user_credits') ?? 5;
     _userPhoto = prefs.getString('user_photo') ?? '';
+    _favoriteTutorialIds = prefs.getStringList('favorite_tutorials') ?? [];
+    _completedTutorialIds = prefs.getStringList('completed_tutorials') ?? [];
 
     // Load data lists
     await refreshAllData();
@@ -112,6 +136,20 @@ class AppStateProvider extends ChangeNotifier {
   void setNavIndex(int index) {
     _currentNavIndex = index;
     notifyListeners();
+  }
+
+  void selectStyleForSimulation(ArtStyle style, {Pet? pet}) {
+    _selectedSimulatorStyle = style;
+    if (pet != null) {
+      _selectedSimulatorPet = pet;
+    }
+    _currentNavIndex = 2; // Jump to Simulator tab
+    notifyListeners();
+  }
+
+  void clearSimulatorPreselection() {
+    _selectedSimulatorStyle = null;
+    _selectedSimulatorPet = null;
   }
 
   // --- Theme Mode ---
@@ -162,6 +200,28 @@ class AppStateProvider extends ChangeNotifier {
     _credits += amount;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('user_credits', _credits);
+    notifyListeners();
+  }
+
+  Future<void> toggleFavoriteTutorial(String id) async {
+    if (_favoriteTutorialIds.contains(id)) {
+      _favoriteTutorialIds.remove(id);
+    } else {
+      _favoriteTutorialIds.add(id);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('favorite_tutorials', _favoriteTutorialIds);
+    notifyListeners();
+  }
+
+  Future<void> toggleCompletedTutorial(String id) async {
+    if (_completedTutorialIds.contains(id)) {
+      _completedTutorialIds.remove(id);
+    } else {
+      _completedTutorialIds.add(id);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('completed_tutorials', _completedTutorialIds);
     notifyListeners();
   }
 

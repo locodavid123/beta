@@ -213,7 +213,15 @@ class HomeScreen extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(24),
                     onTap: () {
-                      state.setNavIndex(2); // Go to simulator screen
+                      final hotStyle = state.styles.isNotEmpty
+                          ? state.styles.firstWhere((s) => s.isHot, orElse: () => state.styles.first)
+                          : null;
+                      if (hotStyle != null) {
+                        final petToUse = state.pets.isNotEmpty ? state.pets.first : null;
+                        state.selectStyleForSimulation(hotStyle, pet: petToUse);
+                      } else {
+                        state.setNavIndex(2);
+                      }
                     },
                     child: Padding(
                       padding: const EdgeInsets.all(20),

@@ -6,6 +6,9 @@ class Tutorial {
   final int views;
   final String status; // 'publicado', 'borrador'
   final String videoUrl;
+  final String category; // 'Cortes', 'Cepillado', 'Higiene', 'Baño'
+  final List<String> tools;
+  final List<String> steps;
 
   Tutorial({
     required this.id,
@@ -15,6 +18,9 @@ class Tutorial {
     this.views = 0,
     this.status = 'publicado',
     this.videoUrl = '',
+    this.category = 'Cortes',
+    this.tools = const [],
+    this.steps = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -26,6 +32,9 @@ class Tutorial {
       'views': views,
       'status': status,
       'videoUrl': videoUrl,
+      'category': category,
+      'tools': tools,
+      'steps': steps,
     };
   }
 
@@ -38,6 +47,9 @@ class Tutorial {
       views: map['views'] ?? 0,
       status: map['status'] ?? 'publicado',
       videoUrl: map['videoUrl'] ?? '',
+      category: map['category'] ?? 'Cortes',
+      tools: map['tools'] != null ? List<String>.from(map['tools']) : const [],
+      steps: map['steps'] != null ? List<String>.from(map['steps']) : const [],
     );
   }
 }

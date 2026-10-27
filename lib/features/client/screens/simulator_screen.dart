@@ -31,6 +31,14 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   bool _isSavingImage = false;
   bool _isSharingImage = false;
 
+  final ScrollController _stylesScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _stylesScrollController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -385,6 +393,33 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     final state = Provider.of<AppStateProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Preselection from Catalog or Home
+    if (state.selectedSimulatorStyle != null) {
+      final preselected = state.selectedSimulatorStyle;
+      final preselectedPet = state.selectedSimulatorPet;
+      _selectedStyle = preselected;
+      _latestCreation = null;
+      _errorMessage = null;
+      if (preselectedPet != null) {
+        _selectedPet = preselectedPet;
+        _petSourceIndex = 0;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        state.clearSimulatorPreselection();
+        if (_stylesScrollController.hasClients && preselected != null) {
+          final idx = state.styles.indexWhere((s) => s.id == preselected.id);
+          if (idx >= 0) {
+            final targetOffset = (idx * 92.0).clamp(0.0, _stylesScrollController.position.maxScrollExtent);
+            _stylesScrollController.animateTo(
+              targetOffset,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+            );
+          }
+        }
+      });
+    }
+
     // Check if defaults need to be set (if lists loaded after init)
     if (_selectedPet == null && state.pets.isNotEmpty) {
       _selectedPet = state.pets.first;
@@ -608,6 +643,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
               child: state.styles.isEmpty
                   ? Center(child: Text(state.translate('sim_loading_styles'), style: TextStyle(color: Colors.grey[500])))
                   : ListView.builder(
+                      controller: _stylesScrollController,
                       scrollDirection: Axis.horizontal,
                       itemCount: state.styles.length,
                       itemBuilder: (context, index) {

@@ -39,6 +39,159 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showApiKeyDialog(BuildContext context) {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    final controller = TextEditingController(text: state.geminiApiKey);
+    bool obscureText = true;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final hasKey = state.geminiApiKey.isNotEmpty;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.goldAccent.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      state.translate('settings_gemini_dialog_title'),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    state.translate('settings_gemini_dialog_desc'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: controller,
+                    obscureText: obscureText,
+                    autofocus: true,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: state.translate('settings_gemini_input_label'),
+                      hintText: state.translate('settings_gemini_input_hint'),
+                      filled: true,
+                      fillColor: isDark ? AppTheme.cardDark : Colors.grey[50],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      prefixIcon: const Icon(Icons.key, color: AppTheme.primaryColor),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureText ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setDialogState(() {
+                            obscureText = !obscureText;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              actions: [
+                if (hasKey)
+                  TextButton.icon(
+                    onPressed: () async {
+                      await state.setGeminiApiKey('');
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.grey[800],
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            content: Text(state.translate('settings_gemini_cleared_snack')),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.delete_outline, size: 16, color: AppTheme.redAccent),
+                    label: Text(
+                      state.translate('settings_gemini_btn_clear'),
+                      style: const TextStyle(color: AppTheme.redAccent, fontSize: 13),
+                    ),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    state.translate('profile_btn_cancel'),
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  ),
+                  onPressed: () async {
+                    final newKey = controller.text.trim();
+                    await state.setGeminiApiKey(newKey);
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: AppTheme.greenAccent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          content: Row(
+                            children: [
+                              const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  state.translate('settings_gemini_saved_snack'),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: Text(
+                    state.translate('settings_gemini_btn_save'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = Provider.of<AppStateProvider>(context);
@@ -75,6 +228,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: state.translate('settings_language'),
               trailingText: state.language,
               onTap: _showLanguageDialog,
+            ),
+          ]),
+          const SizedBox(height: 24),
+
+          // INTELIGENCIA ARTIFICIAL (IA)
+          _buildSectionHeader(state.translate('settings_header_ai')),
+          _buildSettingCard([
+            ListTile(
+              leading: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.goldAccent.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 18),
+              ),
+              title: Text(
+                state.translate('settings_gemini_api'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              subtitle: Text(
+                state.geminiApiKey.isNotEmpty
+                    ? state.translate('settings_gemini_api_sub_active')
+                    : state.translate('settings_gemini_api_sub_inactive'),
+                style: TextStyle(
+                  color: state.geminiApiKey.isNotEmpty ? AppTheme.greenAccent : Colors.grey,
+                  fontSize: 11,
+                  fontWeight: state.geminiApiKey.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: state.geminiApiKey.isNotEmpty
+                          ? AppTheme.greenAccent.withValues(alpha: 0.15)
+                          : Colors.grey.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      state.geminiApiKey.isNotEmpty
+                          ? state.translate('settings_gemini_badge_active')
+                          : state.translate('settings_gemini_badge_sim'),
+                      style: TextStyle(
+                        color: state.geminiApiKey.isNotEmpty ? AppTheme.greenAccent : Colors.grey[600],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey[400]),
+                ],
+              ),
+              onTap: () => _showApiKeyDialog(context),
             ),
           ]),
           const SizedBox(height: 24),

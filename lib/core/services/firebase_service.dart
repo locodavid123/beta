@@ -225,13 +225,14 @@ class FirebaseService {
     }
 
     // Load tutorials
-    final tutorialsJson = prefs.getStringList('mock_tutorials');
+    final tutorialsJson = prefs.getStringList('mock_tutorials_v2');
     if (tutorialsJson != null && tutorialsJson.isNotEmpty) {
       _mockTutorials.clear();
       for (var t in tutorialsJson) {
         _mockTutorials.add(Tutorial.fromMap(jsonDecode(t)));
       }
     } else {
+      _mockTutorials.clear();
       _mockTutorials.addAll(_getDefaultTutorials());
       await _saveMockTutorials();
     }
@@ -271,7 +272,7 @@ class FirebaseService {
   Future<void> _saveMockTutorials() async {
     final prefs = await SharedPreferences.getInstance();
     final data = _mockTutorials.map((t) => jsonEncode(t.toMap())).toList();
-    await prefs.setStringList('mock_tutorials', data);
+    await prefs.setStringList('mock_tutorials_v2', data);
   }
 
   Future<void> _saveMockReports() async {
@@ -354,51 +355,133 @@ class FirebaseService {
     return [
       Tutorial(
         id: 't1',
-        title: 'Corte Puppy Cut básico',
+        title: 'Corte Puppy Cut para Shih Tzu',
         duration: '12:45 min',
         difficulty: 'Fácil',
-        views: 312,
+        category: 'Cortes',
+        views: 342,
         status: 'publicado',
+        tools: [
+          'Tijera recta de 7 pulgadas',
+          'Tijera curva para patitas',
+          'Peine metálico de púas anchas',
+          'Máquina con alza #4 (9.5mm)',
+        ],
+        steps: [
+          'Bañar y secar completamente estirando el manto con cepillo de mantequilla.',
+          'Pasar la máquina con alza #4 en lomo y costados a favor del crecimiento del pelo.',
+          'Redondear las patitas con tijera curva creando columnas rectas y limpias.',
+          'Perfilar la carita redonda con tijera de entresacar manteniendo la forma de peluche.',
+        ],
       ),
       Tutorial(
         id: 't2',
-        title: 'Cuidado y desembollo',
+        title: 'Desenredo de nudos difíciles sin tirones',
         duration: '08:20 min',
         difficulty: 'Medio',
-        views: 287,
+        category: 'Cepillado',
+        views: 418,
         status: 'publicado',
+        tools: [
+          'Cepillo de mantequilla (sin bolitas en la punta)',
+          'Spray desenredante bifásico protector',
+          'Peine metálico tipo peine de manteca',
+          'Cortanudos de seguridad de 9 hojas',
+        ],
+        steps: [
+          'Rociar generosamente el spray desenredante sobre el nudo; jamás cepillar en seco.',
+          'Abrir el nudo suavemente con los dedos desde el centro hacia afuera.',
+          'Con la punta del cepillo de mantequilla, desenredar de puntas hacia la raíz poco a poco.',
+          'Si el nudo es muy compacto, realizar una incisión vertical con el cortanudos y abrir.',
+          'Pasar el peine metálico para confirmar que no queden nudos cerca de la piel.',
+        ],
       ),
       Tutorial(
         id: 't3',
-        title: 'Corte de uñas',
-        duration: '05:10 min',
+        title: 'Limpieza y cuidado de lagrimales',
+        duration: '06:15 min',
         difficulty: 'Fácil',
-        views: 198,
+        category: 'Higiene',
+        views: 295,
         status: 'publicado',
+        tools: [
+          'Suero fisiológico estéril o limpiador de lágrimas',
+          'Gasa suave de algodón (no gasa hilachosa)',
+          'Peine fino para lagrimal / pulgas',
+          'Polvo secante antimicrobiano para pliegues faciales',
+        ],
+        steps: [
+          'Humedecer una gasa estéril con el suero fisiológico templado.',
+          'Limpiar desde el lagrimal hacia abajo con movimientos suaves y descendentes.',
+          'Con el peine fino, retirar los restos de lagañas ya ablandadas con sumo cuidado.',
+          'Secar profundamente la zona con papel tissue para evitar humedad bacteriana.',
+          'Aplicar una mínima pizca de polvo secante en el pliegue nasal.',
+        ],
       ),
       Tutorial(
         id: 't4',
-        title: 'Limpieza de lagañas',
-        duration: '06:15 min',
+        title: 'Corte de uñas seguro sin dolor',
+        duration: '05:10 min',
         difficulty: 'Fácil',
-        views: 176,
+        category: 'Higiene',
+        views: 220,
         status: 'publicado',
+        tools: [
+          'Cortauñas tipo alicate para razas pequeñas',
+          'Polvo cicatrizante hemostático',
+          'Lima de uñas metálica o electrónica para mascotas',
+          'Snacks de recompensa positiva',
+        ],
+        steps: [
+          'Sujetar la patita con firmeza pero con calma, despejando los pelos interdigitales.',
+          'Identificar el vaso sanguíneo; en uñas oscuras cortar solo 1-2 mm de la punta.',
+          'Colocar el cortauñas a 45 grados y realizar un corte firme y decidido.',
+          'Limar las asperezas para que no se enganche en alfombras o telas.',
+          'Premiar inmediatamente a tu perrito tras cada uña cortada.',
+        ],
       ),
       Tutorial(
         id: 't5',
-        title: 'Baño completo',
+        title: 'Baño hidratante y secado anti-dermatitis',
         duration: '15:30 min',
-        difficulty: 'Difícil',
-        views: 142,
+        difficulty: 'Medio',
+        category: 'Baño',
+        views: 184,
         status: 'publicado',
+        tools: [
+          'Shampoo hidratante con aceite de argán o avena',
+          'Mascarilla nutritiva desenredante',
+          'Toalla de microfibra súper absorbente',
+          'Secador profesional con boquilla plana (temperatura tibia)',
+        ],
+        steps: [
+          'Cepillar minuciosamente a tu Shih Tzu antes de mojarlo para evitar apelmazar nudos.',
+          'Mojar con agua tibia y aplicar el shampoo diluido con esponja sin frotar en círculos.',
+          'Aplicar mascarilla hidratante en las puntas dejando actuar 3 minutos y enjuagar al 100%.',
+          'Escurrir con toalla de microfibra a toques, sin estrujar el pelo.',
+          'Secar de abajo hacia arriba estirando el manto con el cepillo hasta que esté 100% seco en raíz.',
+        ],
       ),
       Tutorial(
         id: 't6',
-        title: 'Corte de pelo largo',
-        duration: '24:00 min',
-        difficulty: 'Difícil',
-        views: 20,
-        status: 'borrador',
+        title: 'Elaboración del Moño "Top Knot" con lazo',
+        duration: '09:40 min',
+        difficulty: 'Medio',
+        category: 'Cortes',
+        views: 260,
+        status: 'publicado',
+        tools: [
+          'Peine de cola de ratón de acero',
+          'Bandas elásticas de látex especiales sin rotura',
+          'Lazo o lazo doble decorativo para exposición',
+        ],
+        steps: [
+          'Trazar una línea recta desde la esquina exterior de cada ojo hacia la coronilla.',
+          'Recoger el pelo frontal verificando que los ojos queden libres y sin tensión.',
+          'Colocar la gomita elástica con 2 a 3 vueltas suaves.',
+          'Con la punta del peine, aflojar ligeramente el centro para darle volumen y libertad de parpadeo.',
+          'Colocar el lazo decorativo sobre la banda elástica.',
+        ],
       ),
     ];
   }

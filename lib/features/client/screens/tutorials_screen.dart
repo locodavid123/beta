@@ -9,6 +9,9 @@ class TutorialsScreen extends StatefulWidget {
 
   @override
   State<TutorialsScreen> createState() => _TutorialsScreenState();
+
+  static void openTutorialGuide(BuildContext context, Tutorial tutorial) =>
+      _TutorialsScreenState.openTutorialGuide(context, tutorial);
 }
 
 class _TutorialsScreenState extends State<TutorialsScreen> {
@@ -397,7 +400,7 @@ class _TutorialsScreenState extends State<TutorialsScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () => _openTutorialGuide(context, tutorial),
+          onTap: () => openTutorialGuide(context, tutorial),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -576,7 +579,7 @@ class _TutorialsScreenState extends State<TutorialsScreen> {
     );
   }
 
-  void _openTutorialGuide(BuildContext context, Tutorial tutorial) {
+  static void openTutorialGuide(BuildContext context, Tutorial tutorial) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Set<int> checkedSteps = {};
     bool isPlaying = true;

@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/models/creation.dart';
 import '../../../core/services/media_export_service.dart';
 import '../../../core/widgets/before_after_comparator.dart';
+import 'tutorials_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -395,7 +396,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // Watch Video Tutorial Button in History Details
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      final matchingTutorial = state.getTutorialForStyle(
+                        styleId: creation.styleId,
+                        styleName: creation.styleName,
+                      );
+                      if (matchingTutorial != null) {
+                        TutorialsScreen.openTutorialGuide(context, matchingTutorial);
+                      }
+                    },
+                    icon: const Icon(Icons.play_circle_fill_rounded, color: AppTheme.primaryColor),
+                    label: Text(
+                      state.translate('sim_watch_tutorial_btn'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
 
                 // Action buttons
                 Row(

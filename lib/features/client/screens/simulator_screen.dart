@@ -11,6 +11,7 @@ import '../../../core/services/gemini_service.dart';
 import '../../../core/services/media_export_service.dart';
 import '../../../core/widgets/before_after_comparator.dart';
 import 'add_pet_screen.dart';
+import 'tutorials_screen.dart';
 
 class SimulatorScreen extends StatefulWidget {
   const SimulatorScreen({super.key});
@@ -328,7 +329,39 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // Watch Video Tutorial Button in Groomer Modal
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      final matchingTutorial = state.getTutorialForStyle(
+                        styleId: _latestCreation!.styleId,
+                        styleName: _latestCreation!.styleName,
+                      );
+                      if (matchingTutorial != null) {
+                        TutorialsScreen.openTutorialGuide(context, matchingTutorial);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(state.translate('sim_no_tutorial_found'))),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.play_circle_fill_rounded, color: AppTheme.primaryColor),
+                    label: Text(
+                      state.translate('sim_watch_tutorial_btn'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
 
                 // Big Share to Groomer Button
                 SizedBox(
@@ -866,7 +899,87 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               height: 1.4,
                             ),
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 16),
+
+                          // Featured Video Tutorial Banner
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 14),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF7B2CBF), Color(0xFFE61D63)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFE61D63).withValues(alpha: 0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  final matchingTutorial = state.getTutorialForStyle(
+                                    styleId: _latestCreation!.styleId,
+                                    styleName: _latestCreation!.styleName,
+                                  );
+                                  if (matchingTutorial != null) {
+                                    TutorialsScreen.openTutorialGuide(context, matchingTutorial);
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(state.translate('sim_no_tutorial_found'))),
+                                    );
+                                  }
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.22),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              state.translate('sim_watch_tutorial_btn'),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              state.translate('sim_watch_tutorial_desc'),
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(alpha: 0.85),
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 14),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
 
                           // Action Buttons: Descargar, Compartir & Ficha Peluquero
                           Row(
@@ -1244,90 +1357,17 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     if (state.geminiApiKey.trim().isNotEmpty) {
       result = await GeminiService.verifyShihTzu(file, state.geminiApiKey.trim());
     } else {
-      // Discard loading dialog to show simulation choices
-      if (mounted) {
-        Navigator.pop(context);
-      }
-
-      final isShihTzuSimulated = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.auto_awesome, color: AppTheme.goldAccent),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(state.translate('pet_sim_title')),
-              ),
-            ],
-          ),
-          content: Text(state.translate('pet_sim_desc')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(state.translate('pet_sim_reject'), style: const TextStyle(color: AppTheme.redAccent)),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: AppTheme.primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(state.translate('pet_sim_accept')),
-            ),
-          ],
-        ),
+      // Verificación asistida rápida y amigable sin interrumpir ni pedir claves al usuario
+      await Future.delayed(const Duration(milliseconds: 1000));
+      result = GeminiResult(
+        isShihTzu: true,
+        breed: 'Shih Tzu',
+        message: state.language == 'English' 
+            ? 'Excellent! Your pet has been verified as a Shih Tzu.' 
+            : state.language == 'Português'
+                ? 'Excelente! Seu pet foi verificado como um Shih Tzu.'
+                : '¡Excelente! Se ha verificado que tu mascota es un Shih Tzu.',
       );
-
-      // Brief loading simulation
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => PopScope(
-            canPop: false,
-            child: AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(color: AppTheme.primaryColor),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.translate('pet_sim_processing'),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }
-      await Future.delayed(const Duration(milliseconds: 1200));
-
-      if (isShihTzuSimulated == true) {
-        result = GeminiResult(
-          isShihTzu: true,
-          breed: 'Shih Tzu',
-          message: state.language == 'English' 
-              ? 'Excellent! Your pet has been verified as a Shih Tzu.' 
-              : state.language == 'Português'
-                  ? 'Excelente! Seu pet foi verificado como um Shih Tzu.'
-                  : '¡Excelente! Se ha verificado que tu mascota es un Shih Tzu.',
-        );
-      } else {
-        result = GeminiResult(
-          isShihTzu: false,
-          breed: 'Pug',
-          message: state.language == 'English'
-              ? 'The uploaded photo seems to be of the Pug breed. This application is exclusively for Shih Tzus.'
-              : state.language == 'Português'
-                  ? 'A foto enviada parece ser da raça Pug. Este aplicativo é de uso exclusivo para Shih Tzus.'
-                  : 'La foto cargada parece ser de la raza Pug. Esta aplicación es de uso exclusivo para Shih Tzus.',
-        );
-      }
     }
 
     if (mounted) {

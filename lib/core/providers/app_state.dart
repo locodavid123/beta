@@ -7,6 +7,7 @@ import '../models/tutorial.dart';
 import '../models/report.dart';
 import '../services/firebase_service.dart';
 import '../utils/translations.dart';
+import '../config/app_config.dart';
 
 class AppStateProvider extends ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -69,7 +70,7 @@ class AppStateProvider extends ChangeNotifier {
   String _imageQuality = 'Alta (más lento)';
   String get imageQuality => _imageQuality;
 
-  String _geminiApiKey = '';
+  String _geminiApiKey = AppConfig.defaultGeminiApiKey;
   String get geminiApiKey => _geminiApiKey;
 
   String _userPhoto = '';
@@ -111,7 +112,12 @@ class AppStateProvider extends ChangeNotifier {
     _pushNotifications = prefs.getBool('push_notifications') ?? true;
     _emailNotifications = prefs.getBool('email_notifications') ?? false;
     _imageQuality = prefs.getString('image_quality') ?? 'Alta (más lento)';
-    _geminiApiKey = prefs.getString('gemini_api_key') ?? '';
+    final savedApiKey = prefs.getString('gemini_api_key');
+    if (savedApiKey != null && savedApiKey.trim().isNotEmpty) {
+      _geminiApiKey = savedApiKey.trim();
+    } else {
+      _geminiApiKey = AppConfig.defaultGeminiApiKey.trim();
+    }
     _credits = prefs.getInt('user_credits') ?? 5;
     _userPhoto = prefs.getString('user_photo') ?? '';
     _favoriteTutorialIds = prefs.getStringList('favorite_tutorials') ?? [];
@@ -223,6 +229,56 @@ class AppStateProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('completed_tutorials', _completedTutorialIds);
     notifyListeners();
+  }
+
+  /// Retorna el tutorial de video y técnica paso a paso más adecuado para un corte o estilo
+  Tutorial? getTutorialForStyle({String? styleId, String? styleName}) {
+    if (_tutorials.isEmpty) return null;
+    final sId = (styleId ?? '').toLowerCase();
+    final sName = (styleName ?? '').toLowerCase();
+
+    // Coincidencia exacta por palabras clave de cortes de Shih Tzu
+    for (final t in _tutorials) {
+      final tTitle = t.title.toLowerCase();
+      if ((sId.contains('cachorro') || sName.contains('cachorro') || sName.contains('puppy')) &&
+          (tTitle.contains('puppy') || tTitle.contains('cachorro'))) {
+        return t;
+      }
+      if ((sId.contains('oso') || sName.contains('oso') || sName.contains('teddy')) &&
+          (tTitle.contains('oso') || tTitle.contains('teddy'))) {
+        return t;
+      }
+      if ((sId.contains('leon') || sName.contains('león') || sName.contains('leon')) &&
+          (tTitle.contains('león') || tTitle.contains('leon'))) {
+        return t;
+      }
+      if ((sId.contains('exhibicion') || sName.contains('exhibición') || sName.contains('exposicion') || sName.contains('manto')) &&
+          (tTitle.contains('exhibición') || tTitle.contains('exposicion') || tTitle.contains('manto'))) {
+        return t;
+      }
+      if ((sId.contains('topknot') || sName.contains('top knot') || sName.contains('moño')) &&
+          (tTitle.contains('top knot') || tTitle.contains('moño'))) {
+        return t;
+      }
+    }
+
+    // Coincidencia secundaria: cualquier palabra en común con cortes
+    for (final t in _tutorials) {
+      if (t.category == 'Cortes') {
+        final words = sName.split(' ');
+        for (final w in words) {
+          if (w.length > 3 && t.title.toLowerCase().contains(w)) {
+            return t;
+          }
+        }
+      }
+    }
+
+    // Fallback: primer tutorial de categoría 'Cortes' o el primero existente
+    return _tutorials.firstWhere(
+      (t) => t.category == 'Cortes',
+      orElse: () => _tutorials.first,
+    );
   }
 
   // --- Auth Flow ---

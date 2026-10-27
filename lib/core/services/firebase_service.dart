@@ -225,7 +225,7 @@ class FirebaseService {
     }
 
     // Load tutorials
-    final tutorialsJson = prefs.getStringList('mock_tutorials_v2');
+    final tutorialsJson = prefs.getStringList('mock_tutorials_v3');
     if (tutorialsJson != null && tutorialsJson.isNotEmpty) {
       _mockTutorials.clear();
       for (var t in tutorialsJson) {
@@ -272,7 +272,7 @@ class FirebaseService {
   Future<void> _saveMockTutorials() async {
     final prefs = await SharedPreferences.getInstance();
     final data = _mockTutorials.map((t) => jsonEncode(t.toMap())).toList();
-    await prefs.setStringList('mock_tutorials_v2', data);
+    await prefs.setStringList('mock_tutorials_v3', data);
   }
 
   Future<void> _saveMockReports() async {
@@ -481,6 +481,72 @@ class FirebaseService {
           'Colocar la gomita elástica con 2 a 3 vueltas suaves.',
           'Con la punta del peine, aflojar ligeramente el centro para darle volumen y libertad de parpadeo.',
           'Colocar el lazo decorativo sobre la banda elástica.',
+        ],
+      ),
+      Tutorial(
+        id: 't_oso',
+        title: 'Corte Oso de Peluche (Teddy Bear Cut)',
+        duration: '14:15 min',
+        difficulty: 'Medio',
+        category: 'Cortes',
+        views: 310,
+        status: 'publicado',
+        tools: [
+          'Tijera recta de 7.5 pulgadas',
+          'Tijera de esculpir (dientes anchos)',
+          'Peine metálico tipo peine de manteca',
+          'Carda suave sin bolas de protección',
+        ],
+        steps: [
+          'Bañar y secar con soplador levantando la raíz para dar volumen tipo algodón.',
+          'Rebajar el manto del cuerpo a tijera a una longitud uniforme de 2 a 3 centímetros.',
+          'Redondear la cabeza con tijera de esculpir esculpiendo una esfera suave y tierna.',
+          'Perfilar las orejas en curva alineándolas a la base de la mandíbula inferior.',
+          'Dar forma tubular y redondeada a las 4 patitas para el efecto patas de oso.',
+        ],
+      ),
+      Tutorial(
+        id: 't_leon',
+        title: 'Corte Estilo León Majestuoso',
+        duration: '16:50 min',
+        difficulty: 'Difícil',
+        category: 'Cortes',
+        views: 195,
+        status: 'publicado',
+        tools: [
+          'Máquina profesional con cuchilla #10 o #7F',
+          'Tijera recta microdentada',
+          'Tijera curva de 6.5 pulgadas',
+          'Spray abrillantador con silicona ligera',
+        ],
+        steps: [
+          'Marcar la línea de la melena detrás de las escápulas y alrededor del pecho.',
+          'Pasar la máquina en el lomo, grupa y flancos a favor del pelo con la cuchilla elegida.',
+          'Rasurar los muslos y antebrazos dejando brazaletes o polainas sobre los corvejones.',
+          'Esquilar la base de la cola y recortar un pompón esférico en el tercio final.',
+          'Peinar la melena hacia adelante y emparejar las puntas en forma circular imitando un león.',
+        ],
+      ),
+      Tutorial(
+        id: 't_exhibicion',
+        title: 'Manto Largo Tradicional de Exhibición',
+        duration: '18:20 min',
+        difficulty: 'Difícil',
+        category: 'Cortes',
+        views: 145,
+        status: 'publicado',
+        tools: [
+          'Cepillo de púas metálicas sin bolitas (Pin brush)',
+          'Peine metálico con espina de latón',
+          'Mascarilla nutritiva con extracto de seda',
+          'Plancha térmica para peluquería canina a baja temperatura',
+        ],
+        steps: [
+          'Aplicar baño con mascarilla de caída pesada y no frotar el manto para no quebrar las puntas.',
+          'Secar estirando hacia abajo con el secador direccionado en ángulo descendente.',
+          'Trazar una raya central perfecta en la columna desde la cruz hasta la base de la cola.',
+          'Planchar suavemente mechón por mechón con protector térmico para alisar la caída.',
+          'Perfilar a tijera las puntas que tocan el suelo para una línea limpia al caminar.',
         ],
       ),
     ];

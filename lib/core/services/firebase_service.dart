@@ -537,6 +537,7 @@ class FirebaseService {
         category: 'Cortes',
         views: 195,
         status: 'publicado',
+        videoUrl: 'https://youtu.be/65nmhuunf7k',
         tools: [
           'Máquina profesional con cuchilla #10 o #7F',
           'Tijera recta microdentada',

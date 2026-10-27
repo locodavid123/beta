@@ -4,6 +4,7 @@ import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/tutorial.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class TutorialsScreen extends StatefulWidget {
   const TutorialsScreen({super.key});
@@ -605,479 +606,575 @@ class _TutorialsScreenState extends State<TutorialsScreen> {
   }
 
   static void openTutorialGuide(BuildContext context, Tutorial tutorial) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Set<int> checkedSteps = {};
-    bool isPlaying = true;
-    double playProgress = 0.42;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (modalContext) {
-        return Consumer<AppStateProvider>(
-          builder: (context, state, child) {
-            final isFav = state.isTutorialFavorite(tutorial.id);
-            final isCompleted = state.isTutorialCompleted(tutorial.id);
+      builder: (modalContext) => TutorialDetailSheet(tutorial: tutorial),
+    );
+  }
+}
 
-            return StatefulBuilder(
-              builder: (context, setSheetState) {
-                return Container(
-                  height: MediaQuery.of(context).size.height * 0.88,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.bgDark : Colors.white,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+class TutorialDetailSheet extends StatefulWidget {
+  final Tutorial tutorial;
+
+  const TutorialDetailSheet({super.key, required this.tutorial});
+
+  @override
+  State<TutorialDetailSheet> createState() => _TutorialDetailSheetState();
+}
+
+class _TutorialDetailSheetState extends State<TutorialDetailSheet> {
+  YoutubePlayerController? _youtubeController;
+  final Set<int> _checkedSteps = {};
+  bool _isPlayingMock = true;
+  double _playProgressMock = 0.42;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPlayer();
+  }
+
+  void _initPlayer() {
+    if (widget.tutorial.videoUrl.isNotEmpty) {
+      final videoId = YoutubePlayer.convertUrlToId(widget.tutorial.videoUrl.trim());
+      if (videoId != null && videoId.isNotEmpty) {
+        _youtubeController = YoutubePlayerController(
+          initialVideoId: videoId,
+          flags: const YoutubePlayerFlags(
+            autoPlay: true,
+            mute: false,
+            enableCaption: true,
+            isLive: false,
+            forceHD: false,
+            loop: false,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _youtubeController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = Provider.of<AppStateProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isFav = state.isTutorialFavorite(widget.tutorial.id);
+    final isCompleted = state.isTutorialCompleted(widget.tutorial.id);
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.90,
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.bgDark : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        children: [
+          // Pull handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+
+          // In-App Video Player or Simulated fallback
+          _buildPlayerWidget(context),
+
+          // Scrollable content (Title, Actions, Tools, Steps)
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              children: [
+                // Title
+                Text(
+                  widget.tutorial.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: Column(
-                    children: [
-                      // Pull handle
-                      Center(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 12),
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[400],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                ),
+                const SizedBox(height: 6),
+
+                // Player mode indicator & duration
+                Row(
+                  children: [
+                    if (_youtubeController != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF0000).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ),
-
-                      // Video Player Simulator
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            height: 190,
-                            width: double.infinity,
-                            margin: const EdgeInsets.symmetric(horizontal: 20),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF0F172A), Color(0xFF1E1B4B), Color(0xFF311042)],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.movie_creation_outlined,
-                                color: Colors.white.withValues(alpha: 0.15),
-                                size: 64,
-                              ),
-                            ),
-                          ),
-
-                          // Play/Pause Big Button
-                          GestureDetector(
-                            onTap: () async {
-                              if (tutorial.videoUrl.isNotEmpty) {
-                                final uri = Uri.parse(tutorial.videoUrl.trim());
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                  return;
-                                }
-                              }
-                              setSheetState(() {
-                                isPlaying = !isPlaying;
-                              });
-                            },
-                            child: Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.9),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.primaryColor.withValues(alpha: 0.4),
-                                    blurRadius: 10,
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                color: Colors.white,
-                                size: 32,
-                              ),
-                            ),
-                          ),
-
-                          // Top Badges (Category & HD)
-                          Positioned(
-                            top: 12,
-                            left: 32,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.hd_outlined, color: AppTheme.goldAccent, size: 14),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    tutorial.category,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // Bottom Player Controls
-                          Positioned(
-                            bottom: 12,
-                            left: 32,
-                            right: 32,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => setSheetState(() => isPlaying = !isPlaying),
-                                      child: Icon(
-                                        isPlaying ? Icons.pause : Icons.play_arrow,
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: SliderTheme(
-                                        data: SliderTheme.of(context).copyWith(
-                                          trackHeight: 3,
-                                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                          activeTrackColor: AppTheme.goldAccent,
-                                          inactiveTrackColor: Colors.white24,
-                                          thumbColor: AppTheme.goldAccent,
-                                        ),
-                                        child: Slider(
-                                          value: playProgress,
-                                          onChanged: (val) {
-                                            setSheetState(() => playProgress = val);
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      tutorial.duration,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Scrollable content (Title, Actions, Tools, Steps)
-                      Expanded(
-                        child: ListView(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Title & Description
+                            Icon(Icons.play_circle_fill, color: Color(0xFFFF0000), size: 14),
+                            SizedBox(width: 4),
                             Text(
-                              tutorial.title,
-                              style: const TextStyle(
-                                fontSize: 18,
+                              'Reproduciendo en la app',
+                              style: TextStyle(
+                                color: Color(0xFFFF0000),
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      widget.tutorial.duration,
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Optional external open button if desired
+                if (widget.tutorial.videoUrl.isNotEmpty) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse(widget.tutorial.videoUrl.trim());
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      icon: const Icon(Icons.open_in_new_rounded, size: 16, color: Color(0xFFFF0000)),
+                      label: const Text(
+                        'Abrir en la aplicación de YouTube',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          color: Color(0xFFFF0000),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFFF0000), width: 1),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
+                // Actions Row: Favorite & Completed
+                Row(
+                  children: [
+                    // Favorite Button
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          state.toggleFavoriteTutorial(widget.tutorial.id);
+                        },
+                        icon: Icon(
+                          isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                          color: isFav ? AppTheme.redAccent : Colors.grey,
+                          size: 18,
+                        ),
+                        label: Text(
+                          isFav ? 'Favorito' : 'Guardar',
+                          style: TextStyle(
+                            color: isFav ? AppTheme.redAccent : (isDark ? Colors.white : Colors.black87),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(
+                            color: isFav ? AppTheme.redAccent : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Mark Completed Button
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          state.toggleCompletedTutorial(widget.tutorial.id);
+                        },
+                        icon: Icon(
+                          isCompleted ? Icons.check_circle_rounded : Icons.check_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        label: Text(
+                          isCompleted
+                              ? state.translate('tutorials_completed_badge')
+                              : state.translate('tutorials_mark_completed'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isCompleted ? AppTheme.greenAccent : AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // Tools Needed Section
+                if (widget.tutorial.tools.isNotEmpty) ...[
+                  Text(
+                    state.translate('tutorials_tools_needed'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: widget.tutorial.tools.map((tool) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.construction_rounded,
+                              size: 13,
+                              color: AppTheme.primaryColor,
+                            ),
+                            const SizedBox(width: 6),
                             Text(
-                              state.translate(
-                                'tutorials_stream_hd',
-                                params: {'dur': tutorial.duration},
+                              tool,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black87,
                               ),
-                              style: TextStyle(color: Colors.grey[500], fontSize: 12),
                             ),
-                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                ],
 
-                            // Direct YouTube Video Button
-                            if (tutorial.videoUrl.isNotEmpty) ...[
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () async {
-                                    final uri = Uri.parse(tutorial.videoUrl.trim());
-                                    if (await canLaunchUrl(uri)) {
-                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                    }
-                                  },
-                                  icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 22),
-                                  label: const Text(
-                                    'Ver Video Completo en YouTube',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFFF0000),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    elevation: 2,
-                                  ),
-                                ),
+                // Step by step technique Section
+                if (widget.tutorial.steps.isNotEmpty) ...[
+                  Text(
+                    state.translate('tutorials_steps_title'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ...widget.tutorial.steps.asMap().entries.map((entry) {
+                    final stepIdx = entry.key;
+                    final stepText = entry.value;
+                    final isStepDone = _checkedSteps.contains(stepIdx);
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isStepDone) {
+                            _checkedSteps.remove(stepIdx);
+                          } else {
+                            _checkedSteps.add(stepIdx);
+                            if (_checkedSteps.length == widget.tutorial.steps.length && !isCompleted) {
+                              state.toggleCompletedTutorial(widget.tutorial.id);
+                            }
+                          }
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isStepDone
+                              ? AppTheme.greenAccent.withValues(alpha: 0.1)
+                              : (isDark ? AppTheme.cardDark : Colors.grey[50]),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isStepDone
+                                ? AppTheme.greenAccent.withValues(alpha: 0.4)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: isStepDone
+                                    ? AppTheme.greenAccent
+                                    : AppTheme.primaryColor.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
                               ),
-                              const SizedBox(height: 14),
-                            ],
-
-                            // Actions Row: Favorite & Completed
-                            Row(
-                              children: [
-                                // Favorite Button
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () {
-                                      state.toggleFavoriteTutorial(tutorial.id);
-                                    },
-                                    icon: Icon(
-                                      isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                      color: isFav ? AppTheme.redAccent : Colors.grey,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      isFav ? 'Favorito' : 'Guardar',
-                                      style: TextStyle(
-                                        color: isFav ? AppTheme.redAccent : (isDark ? Colors.white : Colors.black87),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      side: BorderSide(
-                                        color: isFav ? AppTheme.redAccent : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
-                                      ),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-
-                                // Mark Completed Button
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      state.toggleCompletedTutorial(tutorial.id);
-                                    },
-                                    icon: Icon(
-                                      isCompleted ? Icons.check_circle_rounded : Icons.check_rounded,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      isCompleted
-                                          ? state.translate('tutorials_completed_badge')
-                                          : state.translate('tutorials_mark_completed'),
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: isCompleted ? AppTheme.greenAccent : AppTheme.primaryColor,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                      elevation: 0,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Tools Needed Section
-                            if (tutorial.tools.isNotEmpty) ...[
-                              Text(
-                                state.translate('tutorials_tools_needed'),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: tutorial.tools.map((tool) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.construction_rounded,
-                                          size: 13,
+                              child: Center(
+                                child: isStepDone
+                                    ? const Icon(Icons.check, color: Colors.white, size: 16)
+                                    : Text(
+                                        '${stepIdx + 1}',
+                                        style: const TextStyle(
                                           color: AppTheme.primaryColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
                                         ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          tool,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: isDark ? Colors.white70 : Colors.black87,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-
-                            // Step by step technique Section
-                            if (tutorial.steps.isNotEmpty) ...[
-                              Text(
-                                state.translate('tutorials_steps_title'),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              ...tutorial.steps.asMap().entries.map((entry) {
-                                final stepIdx = entry.key;
-                                final stepText = entry.value;
-                                final isStepDone = checkedSteps.contains(stepIdx);
-
-                                return GestureDetector(
-                                  onTap: () {
-                                    setSheetState(() {
-                                      if (isStepDone) {
-                                        checkedSteps.remove(stepIdx);
-                                      } else {
-                                        checkedSteps.add(stepIdx);
-                                        // If all steps checked, auto mark tutorial as completed
-                                        if (checkedSteps.length == tutorial.steps.length && !isCompleted) {
-                                          state.toggleCompletedTutorial(tutorial.id);
-                                        }
-                                      }
-                                    });
-                                  },
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: isStepDone
-                                          ? AppTheme.greenAccent.withValues(alpha: 0.1)
-                                          : (isDark ? AppTheme.cardDark : Colors.grey[50]),
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: isStepDone
-                                            ? AppTheme.greenAccent.withValues(alpha: 0.4)
-                                            : Colors.transparent,
                                       ),
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Container(
-                                          width: 26,
-                                          height: 26,
-                                          decoration: BoxDecoration(
-                                            color: isStepDone
-                                                ? AppTheme.greenAccent
-                                                : AppTheme.primaryColor.withValues(alpha: 0.12),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Center(
-                                            child: isStepDone
-                                                ? const Icon(Icons.check, color: Colors.white, size: 16)
-                                                : Text(
-                                                    '${stepIdx + 1}',
-                                                    style: const TextStyle(
-                                                      color: AppTheme.primaryColor,
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            stepText,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              height: 1.35,
-                                              color: isStepDone
-                                                  ? (isDark ? Colors.grey[400] : Colors.grey[600])
-                                                  : (isDark ? Colors.white : Colors.black87),
-                                              decoration: isStepDone
-                                                  ? TextDecoration.lineThrough
-                                                  : TextDecoration.none,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ],
-
-                            const SizedBox(height: 20),
-
-                            // Close Button
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(modalContext),
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(
-                                    color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                child: Text(
-                                  state.translate('tutorials_btn_close'),
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                stepText,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  height: 1.35,
+                                  color: isStepDone
+                                      ? (isDark ? Colors.grey[400] : Colors.grey[600])
+                                      : (isDark ? Colors.white : Colors.black87),
+                                  decoration: isStepDone
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ],
+                    );
+                  }),
+                ],
+
+                const SizedBox(height: 20),
+
+                // Close Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      state.translate('tutorials_btn_close'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
-                );
-              },
-            );
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayerWidget(BuildContext context) {
+    if (_youtubeController != null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: YoutubePlayer(
+              controller: _youtubeController!,
+              showVideoProgressIndicator: true,
+              progressIndicatorColor: const Color(0xFFFF0000),
+              progressColors: const ProgressBarColors(
+                playedColor: Color(0xFFFF0000),
+                handleColor: Color(0xFFFF0000),
+                bufferedColor: Colors.white24,
+                backgroundColor: Colors.white10,
+              ),
+              bottomActions: [
+                CurrentPosition(),
+                ProgressBar(isExpanded: true),
+                RemainingDuration(),
+                const PlaybackSpeedButton(),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Fallback simulation player
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          height: 190,
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0F172A), Color(0xFF1E1B4B), Color(0xFF311042)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.movie_creation_outlined,
+              color: Colors.white.withValues(alpha: 0.15),
+              size: 64,
+            ),
+          ),
+        ),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _isPlayingMock = !_isPlayingMock;
+            });
           },
-        );
-      },
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.9),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+            child: Icon(
+              _isPlayingMock ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 12,
+          left: 32,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.hd_outlined, color: AppTheme.goldAccent, size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  widget.tutorial.category,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 12,
+          left: 32,
+          right: 32,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _isPlayingMock = !_isPlayingMock),
+                    child: Icon(
+                      _isPlayingMock ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 3,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                        activeTrackColor: AppTheme.goldAccent,
+                        inactiveTrackColor: Colors.white24,
+                        thumbColor: AppTheme.goldAccent,
+                      ),
+                      child: Slider(
+                        value: _playProgressMock,
+                        onChanged: (val) {
+                          setState(() => _playProgressMock = val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.tutorial.duration,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

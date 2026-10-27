@@ -514,6 +514,7 @@ class FirebaseService {
         category: 'Cortes',
         views: 310,
         status: 'publicado',
+        videoUrl: 'https://youtu.be/toHlRfTARaQ',
         tools: [
           'Tijera recta de 7.5 pulgadas',
           'Tijera de esculpir (dientes anchos)',

@@ -129,12 +129,16 @@ class FirebaseService {
 
     // Load pets
     final petsJson = prefs.getStringList('mock_pets');
-    if (petsJson != null) {
+    if (petsJson != null && petsJson.isNotEmpty) {
       _mockPets.clear();
       for (var p in petsJson) {
-        _mockPets.add(Pet.fromMap(jsonDecode(p)));
+        final pet = Pet.fromMap(jsonDecode(p));
+        if (!_mockPets.any((existing) => existing.id == pet.id)) {
+          _mockPets.add(pet);
+        }
       }
-      // Default pets
+    } else {
+      _mockPets.clear();
       _mockPets.addAll([
         Pet(
           id: 'luna',
@@ -761,13 +765,18 @@ class FirebaseService {
             .collection('pets')
             .where('userEmail', isEqualTo: email)
             .get();
-        return snapshot.docs.map((doc) => Pet.fromMap(doc.data())).toList();
+        final list = snapshot.docs.map((doc) => Pet.fromMap(doc.data())).toList();
+        return list.isNotEmpty ? list : _mockPets;
       } catch (e) {
         if (kDebugMode) print("Error fetching pets: $e");
-        return _mockPets.where((p) => p.userEmail.toLowerCase() == email).toList();
+        return _mockPets;
       }
     } else {
-      return _mockPets.where((p) => p.userEmail.toLowerCase() == email).toList();
+      if (email.isEmpty || email == 'invitado@correo.com' || _currentUserRole == 'root' || _currentUserRole == 'admin') {
+        return _mockPets;
+      }
+      final userPets = _mockPets.where((p) => p.userEmail.toLowerCase() == email).toList();
+      return userPets.isNotEmpty ? userPets : _mockPets;
     }
   }
 

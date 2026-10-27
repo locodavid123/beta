@@ -487,12 +487,13 @@ class FirebaseService {
       ),
       Tutorial(
         id: 't6',
-        title: 'Elaboración del Moño "Top Knot" con lazo',
+        title: 'Corte Moño Superior (Top Knot) con lazo',
         duration: '09:40 min',
         difficulty: 'Medio',
         category: 'Cortes',
         views: 260,
         status: 'publicado',
+        videoUrl: 'https://youtu.be/wRnLLl3VDRE',
         tools: [
           'Peine de cola de ratón de acero',
           'Bandas elásticas de látex especiales sin rotura',

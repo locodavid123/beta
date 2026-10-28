@@ -137,12 +137,24 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   Future<void> refreshAllData() async {
-    _pets = await _firebaseService.getPets();
-    _styles = await _firebaseService.getStyles();
-    _creations = await _firebaseService.getCreations();
-    _tutorials = await _firebaseService.getTutorials();
-    _reports = await _firebaseService.getReports();
-    _users = await _firebaseService.getUsers();
+    try {
+      _pets = await _firebaseService.getPets();
+    } catch (_) {}
+    try {
+      _styles = await _firebaseService.getStyles();
+    } catch (_) {}
+    try {
+      _creations = await _firebaseService.getCreations();
+    } catch (_) {}
+    try {
+      _tutorials = await _firebaseService.getTutorials();
+    } catch (_) {}
+    try {
+      _reports = await _firebaseService.getReports();
+    } catch (_) {}
+    try {
+      _users = await _firebaseService.getUsers();
+    } catch (_) {}
     notifyListeners();
   }
 

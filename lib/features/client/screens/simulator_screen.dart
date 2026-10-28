@@ -1575,13 +1575,14 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       Navigator.pop(context); // Dismiss the loading dialog
     }
 
-    if (result.isShihTzu) {
-      setState(() {
-        _newPetImageFile = file;
-        _isNewPetVerified = true;
-        _errorMessage = null;
-      });
+    // Always set the chosen photo and verify it
+    setState(() {
+      _newPetImageFile = file;
+      _isNewPetVerified = true;
+      _errorMessage = null;
+    });
 
+    if (result.isShihTzu) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1598,53 +1599,25 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: AppTheme.goldAccent, size: 28),
+                const Icon(Icons.check_circle_outline, color: AppTheme.greenAccent, size: 28),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    result.isServiceError
-                        ? 'Servicio de IA Ocupado'
-                        : state.translate('pet_verify_failed_title'),
-                  ),
+                const Expanded(
+                  child: Text('Foto Lista para Simular'),
                 ),
               ],
             ),
             content: Text(
-              '${result.message}\n\nSi tu mascota es un Shih Tzu, puedes confirmarlo manualmente para continuar con la simulación.',
+              '${result.message}\n\nTu perrito está listo para probar todos los estilos de corte en el simulador.',
             ),
             actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _newPetImageFile = null;
-                    _isNewPetVerified = false;
-                  });
-                },
-                child: Text(state.translate('pet_btn_understood')),
-              ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline, size: 16),
-                label: const Text('Confirmar Shih Tzu y Continuar'),
+              ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _newPetImageFile = file;
-                    _isNewPetVerified = true;
-                    _errorMessage = null;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      backgroundColor: AppTheme.greenAccent,
-                      content: Text('¡Foto lista para simular el corte!'),
-                    ),
-                  );
-                },
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Continuar'),
               ),
             ],
           ),

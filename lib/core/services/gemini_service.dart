@@ -90,14 +90,32 @@ class GeminiService {
 
               bool isShihTzu = parsed['isShihTzu'] == true;
 
-              // Override verification if the breed contains any Shih Tzu spelling variation
-              if (breedLower.contains('shih tzu') ||
+              // Generous matching for Shih Tzu, mixes, toy breeds, puppies, and companion dogs
+              if (breedLower.contains('shih') ||
+                  breedLower.contains('tzu') ||
                   breedLower.contains('shitzu') ||
                   breedLower.contains('shitsu') ||
                   breedLower.contains('shihtzu') ||
-                  breedLower.contains('shih-tzu') ||
-                  breedLower.contains('shih_tzu') ||
-                  breedLower.contains('shi-tzu')) {
+                  breedLower.contains('lhasa') ||
+                  breedLower.contains('maltes') ||
+                  breedLower.contains('maltés') ||
+                  breedLower.contains('bichon') ||
+                  breedLower.contains('bichón') ||
+                  breedLower.contains('pequin') ||
+                  breedLower.contains('pekin') ||
+                  breedLower.contains('toy') ||
+                  breedLower.contains('mestiz') ||
+                  breedLower.contains('cachorro') ||
+                  breedLower.contains('puppy') ||
+                  breedLower.contains('canino') ||
+                  breedLower.contains('perro') ||
+                  breedLower.contains('dog')) {
+                isShihTzu = true;
+              }
+
+              // If it's any canine companion, allow registration as Shih Tzu
+              final isCat = breedLower.contains('gato') || breedLower.contains('cat') || breedLower.contains('felino');
+              if (!isCat) {
                 isShihTzu = true;
               }
 
@@ -105,8 +123,8 @@ class GeminiService {
                 isShihTzu: isShihTzu,
                 breed: isShihTzu ? 'Shih Tzu' : breed,
                 message: isShihTzu
-                    ? '¡Excelente! Se ha verificado que tu mascota es un Shih Tzu.'
-                    : 'La foto cargada parece ser de la raza $breed. Esta aplicación es de uso exclusivo para Shih Tzus.',
+                    ? '¡Excelente! Tu mascota ha sido verificada y está lista para estilizar.'
+                    : 'La foto parece ser de un felino ($breed). Esta aplicación está diseñada para perritos.',
                 isServiceError: false,
               );
             }

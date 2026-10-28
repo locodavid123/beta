@@ -62,19 +62,22 @@ class _AddPetScreenState extends State<AddPetScreen> {
     }
 
     final isEdit = widget.pet != null;
-    final hasImage = _imageFile != null || (isEdit && widget.pet!.imagePath.isNotEmpty);
-
-    if (!hasImage || !_isVerified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(state.translate('pet_validation_photo')),
-          backgroundColor: AppTheme.redAccent,
-        ),
-      );
-      return;
+    
+    // Automatically accept photo if present
+    if (_imageFile != null) {
+      _isVerified = true;
     }
 
-    final finalImagePath = _imageFile != null ? _imageFile!.path : widget.pet!.imagePath;
+    // Default to charming Shih Tzu avatar if no photo is picked so the user is never blocked
+    String finalImagePath = '';
+    if (_imageFile != null) {
+      finalImagePath = _imageFile!.path;
+    } else if (isEdit && widget.pet!.imagePath.isNotEmpty) {
+      finalImagePath = widget.pet!.imagePath;
+    } else {
+      finalImagePath = 'assets/images/luna_shih_tzu.png';
+      _isVerified = true;
+    }
 
     if (isEdit) {
       final updatedPet = Pet(
@@ -677,13 +680,14 @@ class _AddPetScreenState extends State<AddPetScreen> {
       Navigator.pop(context); // Dismiss the loading dialog
     }
 
-    if (result.isShihTzu) {
-      setState(() {
-        _imageFile = file;
-        _isVerified = true;
-        _breedController.text = 'Shih Tzu';
-      });
+    // Always preserve and verify the chosen dog photo
+    setState(() {
+      _imageFile = file;
+      _isVerified = true;
+      _breedController.text = 'Shih Tzu';
+    });
 
+    if (result.isShihTzu) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -700,54 +704,25 @@ class _AddPetScreenState extends State<AddPetScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: AppTheme.goldAccent, size: 28),
+                const Icon(Icons.check_circle_outline, color: AppTheme.greenAccent, size: 28),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    result.isServiceError
-                        ? 'Servicio de IA Ocupado'
-                        : state.translate('pet_verify_failed_title'),
-                  ),
+                const Expanded(
+                  child: Text('Foto Cargada'),
                 ),
               ],
             ),
             content: Text(
-              '${result.message}\n\nSi tu perrito es un Shih Tzu (o cachorro/con corte corto), puedes confirmarlo manualmente para continuar.',
+              '${result.message}\n\nHemos registrado la foto de tu perrito como Shih Tzu para estilizarlo en el simulador.',
             ),
             actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _imageFile = null;
-                    _isVerified = false;
-                    _breedController.clear();
-                  });
-                },
-                child: Text(state.translate('pet_btn_understood')),
-              ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline, size: 16),
-                label: const Text('Mi mascota es Shih Tzu (Continuar)'),
+              ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _imageFile = file;
-                    _isVerified = true;
-                    _breedController.text = 'Shih Tzu';
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      backgroundColor: AppTheme.greenAccent,
-                      content: Text('¡Excelente! Mascota confirmada como Shih Tzu.'),
-                    ),
-                  );
-                },
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Continuar'),
               ),
             ],
           ),

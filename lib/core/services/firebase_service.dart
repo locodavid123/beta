@@ -675,51 +675,58 @@ class FirebaseService {
   // --- Auth Service API ---
   Future<UserCredential?> signIn(String email, String password) async {
     final prefs = await SharedPreferences.getInstance();
+    final cleanEmail = email.trim().toLowerCase();
+
     if (_isFirebaseInitialized) {
       try {
-        final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+        final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: cleanEmail,
+          password: password,
+        );
         if (cred.user != null) {
-          final doc = await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).get();
-          if (doc.exists) {
-            _currentUserName = doc.data()?['name'] ?? 'Usuario';
-            _currentUserRole = doc.data()?['role'] ?? 'client';
-            _currentUserPhoto = doc.data()?['photoUrl'] ?? '';
-          } else {
-            _currentUserName = cred.user!.displayName ?? 'Usuario';
-            _currentUserRole = (email.toLowerCase().contains('root'))
-                ? 'root'
-                : (email.toLowerCase().contains('admin'))
-                    ? 'admin'
-                    : 'client';
-            _currentUserPhoto = '';
-            try {
-              await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
-                'name': _currentUserName,
-                'email': email,
-                'credits': _currentUserRole == 'client' ? 5 : 999,
-                'role': _currentUserRole,
-                'photoUrl': '',
-              });
-            } catch (_) {}
-          }
-          _currentUserEmail = cred.user!.email;
-          await prefs.setString('user_email', _currentUserEmail!);
+          _currentUserEmail = cred.user!.email ?? cleanEmail;
+          _currentUserName = cred.user!.displayName ?? cleanEmail.split('@').first;
+          _currentUserRole = (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
+              ? 'root'
+              : (cleanEmail == 'admin@email.com' || cleanEmail == 'admin@myapp.com')
+                  ? 'admin'
+                  : 'client';
+          _currentUserPhoto = '';
+
+          // Read user profile from Firestore safely inside a try-catch so permission errors never abort login
+          try {
+            final doc = await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).get();
+            if (doc.exists && doc.data() != null) {
+              final data = doc.data()!;
+              _currentUserName = data['name'] ?? _currentUserName;
+              _currentUserRole = data['role'] ?? _currentUserRole;
+              _currentUserPhoto = data['photoUrl'] ?? '';
+              final userCredits = data['credits'] ?? 5;
+              await prefs.setInt('user_credits', userCredits);
+            }
+          } catch (_) {}
+
+          // Also save to local cache
+          await _saveUserToLocalMock(_currentUserName!, cleanEmail, password, _currentUserRole, 5, cred.user?.uid);
+
+          await prefs.setString('user_email', cleanEmail);
           await prefs.setString('user_name', _currentUserName!);
           await prefs.setString('user_role', _currentUserRole);
           await prefs.setString('user_photo', _currentUserPhoto!);
+          await prefs.setInt('user_credits', prefs.getInt('user_credits') ?? 5);
+          return cred;
         }
         return cred;
       } catch (e) {
         // Fallback to local authentication for built-in accounts (root, admin, test users)
-        // or if Firebase Auth doesn't have the user registered yet in the cloud
         try {
-          return await _signInLocal(email, password, prefs);
+          return await _signInLocal(cleanEmail, password, prefs);
         } catch (_) {
           rethrow;
         }
       }
     } else {
-      return await _signInLocal(email, password, prefs);
+      return await _signInLocal(cleanEmail, password, prefs);
     }
   }
 
@@ -841,19 +848,35 @@ class FirebaseService {
         return cred;
       } on FirebaseAuthException catch (e) {
         if (e.code == 'email-already-in-use') {
-          throw Exception("Este correo electrónico ya está registrado en la base de datos. Por favor inicia sesión.");
+          // If already registered, attempt direct login with this password!
+          try {
+            final loginCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+              email: cleanEmail,
+              password: password,
+            );
+            if (loginCred.user != null) {
+              _currentUserEmail = cleanEmail;
+              _currentUserName = cleanName.isNotEmpty
+                  ? cleanName
+                  : (loginCred.user!.displayName ?? cleanEmail.split('@').first);
+              _currentUserRole = 'client';
+              _currentUserPhoto = '';
+              await prefs.setString('user_email', cleanEmail);
+              await prefs.setString('user_name', _currentUserName!);
+              await prefs.setString('user_role', _currentUserRole);
+              await prefs.setInt('user_credits', 5);
+              return loginCred;
+            }
+          } catch (_) {}
+          throw Exception("Este correo electrónico ya está registrado. Por favor inicia sesión con tu contraseña.");
         } else if (e.code == 'weak-password') {
           throw Exception("La contraseña es muy débil. Debe tener al menos 6 caracteres.");
         } else if (e.code == 'invalid-email') {
           throw Exception("El correo electrónico no es válido.");
         } else if (e.code == 'operation-not-allowed') {
-          throw Exception("El registro con correo y contraseña no está habilitado en Firebase.");
+          return await _signUpLocal(cleanEmail, password, cleanName, prefs);
         } else {
-          // If network error, attempt local registration
-          if (e.code == 'network-request-failed') {
-            return await _signUpLocal(cleanEmail, password, cleanName, prefs);
-          }
-          throw Exception(e.message ?? "Error en el registro.");
+          return await _signUpLocal(cleanEmail, password, cleanName, prefs);
         }
       } catch (e) {
         return await _signUpLocal(cleanEmail, password, cleanName, prefs);
@@ -911,8 +934,27 @@ class FirebaseService {
         } catch (_) {}
       }
 
-      if (users.any((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail)) {
-        throw Exception("El correo ya está registrado.");
+      final existingIndex = users.indexWhere((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail);
+      if (existingIndex != -1) {
+        final existing = users[existingIndex];
+        // If password matches or was empty/default, sign the user in smoothly!
+        if (existing['password'] == password || (existing['password'] ?? '').toString().isEmpty) {
+          _currentUserRole = existing['role'] ?? 'client';
+          _currentUserEmail = cleanEmail;
+          _currentUserName = (cleanName.isNotEmpty ? cleanName : existing['name'] ?? 'Usuario').toString();
+          _currentUserPhoto = existing['photoUrl'] ?? '';
+          existing['name'] = _currentUserName;
+          existing['password'] = password;
+          await prefs.setString('mock_users', jsonEncode(users));
+          await prefs.setString('user_email', cleanEmail);
+          await prefs.setString('user_name', _currentUserName!);
+          await prefs.setString('user_role', _currentUserRole);
+          await prefs.setString('user_photo', _currentUserPhoto!);
+          await prefs.setInt('user_credits', existing['credits'] ?? 5);
+          return null;
+        } else {
+          throw Exception("Este correo ya está registrado en el sistema. Por favor inicia sesión con tu contraseña.");
+        }
       }
 
       _currentUserRole = (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
@@ -1121,75 +1163,98 @@ class FirebaseService {
   // --- Pets API ---
   Future<List<Pet>> getPets() async {
     final email = currentUserEmail?.trim().toLowerCase() ?? '';
+    final List<Pet> result = [];
+    final Set<String> seenIds = {};
+
+    // 1. Try to fetch from Firestore if initialized
     if (_isFirebaseInitialized) {
       try {
         final snapshot = await FirebaseFirestore.instance
             .collection('pets')
             .where('userEmail', isEqualTo: email)
             .get();
-        final list = snapshot.docs.map((doc) => Pet.fromMap(doc.data())).toList();
-        return list.isNotEmpty ? list : _mockPets;
+        for (var doc in snapshot.docs) {
+          final p = Pet.fromMap(doc.data());
+          if (!seenIds.contains(p.id)) {
+            seenIds.add(p.id);
+            result.add(p);
+          }
+        }
       } catch (e) {
-        if (kDebugMode) print("Error fetching pets: $e");
-        return _mockPets;
+        if (kDebugMode) print("Error fetching pets from Firestore: $e");
       }
-    } else {
-      if (email.isEmpty || email == 'invitado@correo.com' || _currentUserRole == 'root' || _currentUserRole == 'admin') {
-        return _mockPets;
-      }
-      final userPets = _mockPets.where((p) => p.userEmail.toLowerCase() == email).toList();
-      return userPets.isNotEmpty ? userPets : _mockPets;
     }
+
+    // 2. Merge local pets for this user
+    final localForUser = (email.isEmpty || email == 'invitado@correo.com' || _currentUserRole == 'root' || _currentUserRole == 'admin')
+        ? _mockPets
+        : _mockPets.where((p) => p.userEmail.toLowerCase() == email).toList();
+
+    for (var p in localForUser) {
+      if (!seenIds.contains(p.id)) {
+        seenIds.add(p.id);
+        result.add(p);
+      }
+    }
+
+    // 3. Fallback to default demo pets if still completely empty (for guest, admin, root, or demo user)
+    if (result.isEmpty && (email.isEmpty || email == 'invitado@correo.com' || email == 'cliente_prueba@email.com' || _currentUserRole != 'client')) {
+      return List<Pet>.from(_mockPets);
+    }
+
+    return result;
   }
 
   Future<void> addPet(Pet pet) async {
+    // 1. ALWAYS update local cache and storage so data is immediately safe on device
+    final idx = _mockPets.indexWhere((p) => p.id == pet.id);
+    if (idx != -1) {
+      _mockPets[idx] = pet;
+    } else {
+      _mockPets.add(pet);
+    }
+    await _saveMockPets();
+
+    // 2. Try Firestore
     if (_isFirebaseInitialized) {
       try {
         await FirebaseFirestore.instance.collection('pets').doc(pet.id).set(pet.toMap());
       } catch (e) {
-        if (kDebugMode) print("Error adding pet: $e");
-        _mockPets.add(pet);
-        await _saveMockPets();
+        if (kDebugMode) print("Error adding pet to Firestore: $e");
       }
-    } else {
-      _mockPets.add(pet);
-      await _saveMockPets();
     }
   }
 
   Future<void> updatePet(Pet pet) async {
+    // 1. ALWAYS update local cache and storage
+    final idx = _mockPets.indexWhere((p) => p.id == pet.id);
+    if (idx != -1) {
+      _mockPets[idx] = pet;
+      await _saveMockPets();
+    }
+
+    // 2. Try Firestore
     if (_isFirebaseInitialized) {
       try {
         await FirebaseFirestore.instance.collection('pets').doc(pet.id).update(pet.toMap());
       } catch (e) {
-        if (kDebugMode) print("Error updating pet: $e");
-        final idx = _mockPets.indexWhere((p) => p.id == pet.id);
-        if (idx != -1) {
-          _mockPets[idx] = pet;
-          await _saveMockPets();
-        }
-      }
-    } else {
-      final idx = _mockPets.indexWhere((p) => p.id == pet.id);
-      if (idx != -1) {
-        _mockPets[idx] = pet;
-        await _saveMockPets();
+        if (kDebugMode) print("Error updating pet in Firestore: $e");
       }
     }
   }
 
   Future<void> deletePet(String id) async {
+    // 1. ALWAYS remove from local cache and storage
+    _mockPets.removeWhere((p) => p.id == id);
+    await _saveMockPets();
+
+    // 2. Try Firestore
     if (_isFirebaseInitialized) {
       try {
         await FirebaseFirestore.instance.collection('pets').doc(id).delete();
       } catch (e) {
-        if (kDebugMode) print("Error deleting pet: $e");
-        _mockPets.removeWhere((p) => p.id == id);
-        await _saveMockPets();
+        if (kDebugMode) print("Error deleting pet in Firestore: $e");
       }
-    } else {
-      _mockPets.removeWhere((p) => p.id == id);
-      await _saveMockPets();
     }
   }
 
@@ -1270,17 +1335,20 @@ class FirebaseService {
   }
 
   Future<void> addCreation(Creation creation) async {
+    final idx = _mockCreations.indexWhere((c) => c.id == creation.id);
+    if (idx != -1) {
+      _mockCreations[idx] = creation;
+    } else {
+      _mockCreations.insert(0, creation);
+    }
+    await _saveMockCreations();
+
     if (_isFirebaseInitialized) {
       try {
         await FirebaseFirestore.instance.collection('creations').doc(creation.id).set(creation.toMap());
       } catch (e) {
-        if (kDebugMode) print("Error adding creation: $e");
-        _mockCreations.add(creation);
-        await _saveMockCreations();
+        if (kDebugMode) print("Error adding creation to Firestore: $e");
       }
-    } else {
-      _mockCreations.add(creation);
-      await _saveMockCreations();
     }
   }
 

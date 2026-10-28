@@ -779,83 +779,325 @@ class FirebaseService {
 
   Future<UserCredential?> signUp(String email, String password, String name) async {
     final prefs = await SharedPreferences.getInstance();
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanName = name.trim();
+
     if (_isFirebaseInitialized) {
       try {
-        final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
-        _currentUserRole = (email == 'root@email.com' || email == 'root@myapp.com')
+        final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: cleanEmail,
+          password: password,
+        );
+
+        try {
+          await cred.user?.updateDisplayName(cleanName);
+        } catch (_) {}
+
+        _currentUserRole = (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
             ? 'root'
-            : (email == 'admin@email.com' || email == 'admin@myapp.com')
+            : (cleanEmail == 'admin@email.com' || cleanEmail == 'admin@myapp.com')
                 ? 'admin'
                 : 'client';
+
+        final userData = {
+          'uid': cred.user?.uid,
+          'name': cleanName,
+          'email': cleanEmail,
+          'credits': 5,
+          'role': _currentUserRole,
+          'photoUrl': '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLogin': FieldValue.serverTimestamp(),
+        };
+
+        // Write directly to Firestore users collection
         try {
-          await FirebaseFirestore.instance.collection('users').doc(cred.user?.uid).set({
-            'name': name,
-            'email': email,
-            'credits': 5,
-            'role': _currentUserRole,
-            'photoUrl': '',
-          });
-        } catch (_) {}
-        _currentUserEmail = email;
-        _currentUserName = name;
+          if (cred.user?.uid != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(cred.user!.uid)
+                .set(userData, SetOptions(merge: true));
+            if (kDebugMode) {
+              print("User successfully registered in Firestore: $cleanEmail (${cred.user!.uid})");
+            }
+          }
+        } catch (firestoreError) {
+          if (kDebugMode) {
+            print("Warning: could not write user to Firestore: $firestoreError");
+          }
+        }
+
+        // Cache locally in mock_users as well
+        await _saveUserToLocalMock(cleanName, cleanEmail, password, _currentUserRole, 5, cred.user?.uid);
+
+        _currentUserEmail = cleanEmail;
+        _currentUserName = cleanName;
         _currentUserPhoto = '';
-        await prefs.setString('user_email', email);
-        await prefs.setString('user_name', name);
+        await prefs.setString('user_email', cleanEmail);
+        await prefs.setString('user_name', cleanName);
         await prefs.setString('user_role', _currentUserRole);
         await prefs.setString('user_photo', '');
+        await prefs.setInt('user_credits', 5);
         return cred;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'email-already-in-use') {
+          throw Exception("Este correo electrónico ya está registrado en la base de datos. Por favor inicia sesión.");
+        } else if (e.code == 'weak-password') {
+          throw Exception("La contraseña es muy débil. Debe tener al menos 6 caracteres.");
+        } else if (e.code == 'invalid-email') {
+          throw Exception("El correo electrónico no es válido.");
+        } else if (e.code == 'operation-not-allowed') {
+          throw Exception("El registro con correo y contraseña no está habilitado en Firebase.");
+        } else {
+          // If network error, attempt local registration
+          if (e.code == 'network-request-failed') {
+            return await _signUpLocal(cleanEmail, password, cleanName, prefs);
+          }
+          throw Exception(e.message ?? "Error en el registro.");
+        }
       } catch (e) {
-        return await _signUpLocal(email, password, name, prefs);
+        return await _signUpLocal(cleanEmail, password, cleanName, prefs);
       }
     } else {
-      return await _signUpLocal(email, password, name, prefs);
+      return await _signUpLocal(cleanEmail, password, cleanName, prefs);
     }
   }
 
+  Future<void> _saveUserToLocalMock(
+    String name,
+    String email,
+    String password,
+    String role,
+    int credits, [
+    String? uid,
+  ]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final usersJson = prefs.getString('mock_users');
+    List<dynamic> users = [];
+    if (usersJson != null) {
+      try {
+        users = jsonDecode(usersJson);
+      } catch (_) {}
+    }
+    final normalized = email.trim().toLowerCase();
+    final idx = users.indexWhere((u) => (u['email'] ?? '').toString().toLowerCase() == normalized);
+    final userMap = {
+      "uid": uid ?? 'local_${normalized.hashCode}',
+      "email": normalized,
+      "password": password,
+      "name": name,
+      "role": role,
+      "credits": credits,
+      "photoUrl": "",
+    };
+    if (idx == -1) {
+      users.add(userMap);
+    } else {
+      users[idx] = userMap;
+    }
+    await prefs.setString('mock_users', jsonEncode(users));
+  }
+
   Future<UserCredential?> _signUpLocal(String email, String password, String name, SharedPreferences prefs) async {
-    if (email.isNotEmpty && password.length >= 6) {
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanName = name.trim();
+
+    if (cleanEmail.isNotEmpty && password.length >= 6) {
       final usersJson = prefs.getString('mock_users');
       List<dynamic> users = [];
       if (usersJson != null) {
-        users = jsonDecode(usersJson);
-      } else {
-        users = [];
+        try {
+          users = jsonDecode(usersJson);
+        } catch (_) {}
       }
 
-      final normalizedEmail = email.trim().toLowerCase();
-      if (users.any((u) => u['email'].toString().toLowerCase() == normalizedEmail)) {
+      if (users.any((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail)) {
         throw Exception("El correo ya está registrado.");
       }
 
-      _currentUserRole = (email == 'root@email.com' || email == 'root@myapp.com')
+      _currentUserRole = (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
           ? 'root'
-          : (email == 'admin@email.com' || email == 'admin@myapp.com')
+          : (cleanEmail == 'admin@email.com' || cleanEmail == 'admin@myapp.com')
               ? 'admin'
               : 'client';
 
       users.add({
-        "email": email,
+        "uid": 'local_${cleanEmail.hashCode}',
+        "email": cleanEmail,
         "password": password,
-        "name": name,
+        "name": cleanName,
         "role": _currentUserRole,
         "credits": 5,
-        "photoUrl": ""
+        "photoUrl": "",
       });
 
       await prefs.setString('mock_users', jsonEncode(users));
 
-      _currentUserEmail = email;
-      _currentUserName = name;
+      _currentUserEmail = cleanEmail;
+      _currentUserName = cleanName;
       _currentUserPhoto = '';
-      await prefs.setString('user_email', email);
-      await prefs.setString('user_name', name);
+      await prefs.setString('user_email', cleanEmail);
+      await prefs.setString('user_name', cleanName);
       await prefs.setString('user_role', _currentUserRole);
       await prefs.setString('user_photo', '');
       await prefs.setInt('user_credits', 5);
       return null;
     } else {
-      throw Exception("Datos inválidos.");
+      throw Exception("Por favor introduce un correo válido y una contraseña de al menos 6 caracteres.");
     }
+  }
+
+  // --- Global Users Management API (Firestore + Local Sync) ---
+  Future<List<Map<String, dynamic>>> getUsers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<Map<String, dynamic>> result = [];
+    final Set<String> seenEmails = {};
+
+    // 1. Fetch from Firestore if initialized
+    if (_isFirebaseInitialized) {
+      try {
+        final snapshot = await FirebaseFirestore.instance.collection('users').get();
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final email = (data['email'] ?? '').toString().trim().toLowerCase();
+          if (email.isNotEmpty && !seenEmails.contains(email)) {
+            seenEmails.add(email);
+            result.add({
+              'uid': doc.id,
+              'name': data['name'] ?? 'Usuario',
+              'email': email,
+              'role': data['role'] ?? 'client',
+              'credits': data['credits'] ?? 5,
+              'photoUrl': data['photoUrl'] ?? '',
+              'createdAt': data['createdAt'],
+            });
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) print("Error fetching users from Firestore: $e");
+      }
+    }
+
+    // 2. Fetch from local SharedPreferences mock_users
+    final usersJson = prefs.getString('mock_users');
+    if (usersJson != null) {
+      try {
+        final List<dynamic> localUsers = jsonDecode(usersJson);
+        for (var u in localUsers) {
+          final email = (u['email'] ?? '').toString().trim().toLowerCase();
+          if (email.isNotEmpty && !seenEmails.contains(email)) {
+            seenEmails.add(email);
+            result.add({
+              'uid': u['uid'] ?? 'local_${email.hashCode}',
+              'name': u['name'] ?? 'Usuario',
+              'email': email,
+              'role': u['role'] ?? 'client',
+              'credits': u['credits'] ?? 5,
+              'photoUrl': u['photoUrl'] ?? '',
+            });
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Ensure official root and admin accounts are present
+    final defaultUsers = [
+      {'name': 'Root Admin', 'email': 'root@email.com', 'role': 'root', 'credits': 999},
+      {'name': 'Root Admin', 'email': 'root@myapp.com', 'role': 'root', 'credits': 999},
+      {'name': 'Admin General', 'email': 'admin@email.com', 'role': 'admin', 'credits': 999},
+      {'name': 'Admin General', 'email': 'admin@myapp.com', 'role': 'admin', 'credits': 999},
+      {'name': 'Valentina López', 'email': 'cliente_prueba@email.com', 'role': 'client', 'credits': 5},
+    ];
+
+    for (var def in defaultUsers) {
+      final email = def['email'].toString().trim().toLowerCase();
+      if (!seenEmails.contains(email)) {
+        seenEmails.add(email);
+        result.add(Map<String, dynamic>.from(def));
+      }
+    }
+
+    return result;
+  }
+
+  Future<void> updateUserInDatabase(String email, String newRole, int newCredits, [String? newName]) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Update in Firestore
+    if (_isFirebaseInitialized) {
+      try {
+        final query = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: cleanEmail)
+            .get();
+        for (var doc in query.docs) {
+          final updates = <String, dynamic>{
+            'role': newRole,
+            'credits': newCredits,
+          };
+          if (newName != null && newName.isNotEmpty) {
+            updates['name'] = newName;
+          }
+          await doc.reference.update(updates);
+        }
+      } catch (e) {
+        if (kDebugMode) print("Error updating user in Firestore: $e");
+      }
+    }
+
+    // 2. Update in local storage
+    final usersJson = prefs.getString('mock_users');
+    if (usersJson != null) {
+      try {
+        List<dynamic> users = jsonDecode(usersJson);
+        final idx = users.indexWhere((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail);
+        if (idx != -1) {
+          users[idx]['role'] = newRole;
+          users[idx]['credits'] = newCredits;
+          if (newName != null && newName.isNotEmpty) {
+            users[idx]['name'] = newName;
+          }
+          await prefs.setString('mock_users', jsonEncode(users));
+        }
+      } catch (_) {}
+    }
+
+    // 3. If currently logged in user is being edited, update active session
+    if (_currentUserEmail?.toLowerCase() == cleanEmail) {
+      _currentUserRole = newRole;
+      if (newName != null && newName.isNotEmpty) {
+        _currentUserName = newName;
+        await prefs.setString('user_name', newName);
+      }
+      await prefs.setString('user_role', newRole);
+      await prefs.setInt('user_credits', newCredits);
+    }
+  }
+
+  Future<void> addUserToDatabase(String name, String email, String role, int credits) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanName = name.trim();
+
+    // 1. Add to Firestore
+    if (_isFirebaseInitialized) {
+      try {
+        await FirebaseFirestore.instance.collection('users').add({
+          'name': cleanName,
+          'email': cleanEmail,
+          'role': role,
+          'credits': credits,
+          'photoUrl': '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLogin': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        if (kDebugMode) print("Error creating user in Firestore: $e");
+      }
+    }
+
+    // 2. Add to local storage
+    await _saveUserToLocalMock(cleanName, cleanEmail, 'password123', role, credits);
   }
 
   Future<void> signOut() async {

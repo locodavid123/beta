@@ -25,6 +25,9 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
     _tabController.addListener(() {
       setState(() {});
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AppStateProvider>(context, listen: false).reloadUsers();
+    });
   }
 
   @override
@@ -81,7 +84,7 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                   child: const Text('Cancelar'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final name = nameController.text.trim();
                     final email = emailController.text.trim();
                     if (name.isEmpty || email.isEmpty) {
@@ -90,18 +93,14 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                       );
                       return;
                     }
-                    setState(() {
-                      _allUsers.insert(0, {
-                        'name': name,
-                        'email': email,
-                        'role': role,
-                        'credits': role == 'client' ? 5 : 999,
-                      });
-                    });
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Usuario "$name" creado con éxito.')),
-                    );
+                    final state = Provider.of<AppStateProvider>(context, listen: false);
+                    await state.createUserFromAdmin(name, email, role, role == 'client' ? 5 : 999);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Usuario "$name" creado en la base de datos.')),
+                      );
+                    }
                   },
                   child: const Text('Crear'),
                 ),
@@ -169,25 +168,18 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                     final credStr = creditsController.text.trim();
                     final creds = int.tryParse(credStr) ?? user['credits'];
 
-                    setState(() {
-                      _allUsers[index] = {
-                        'name': name,
-                        'email': user['email'],
-                        'role': role,
-                        'credits': role == 'client' ? creds : 999,
-                      };
-                    });
+                    final state = Provider.of<AppStateProvider>(context, listen: false);
+                    await state.updateUserRoleAndCredits(user['email'], role, creds, name);
 
                     // If editing client_prueba, sync with provider
                     if (user['email'] == 'cliente_prueba@email.com') {
-                      final state = Provider.of<AppStateProvider>(context, listen: false);
                       await state.setUserCredits(creds);
                     }
 
                     if (context.mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Usuario actualizado.')),
+                        const SnackBar(content: Text('Usuario actualizado en la base de datos.')),
                       );
                     }
                   },
@@ -206,16 +198,14 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
     final state = Provider.of<AppStateProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Load dynamic users list synced with state credits
-    _allUsers = [
-      {'name': 'Root Admin', 'email': 'root@myapp.com', 'role': 'root', 'credits': 999},
-      {'name': 'Admin General', 'email': 'admin@myapp.com', 'role': 'admin', 'credits': 999},
-      {'name': 'Cliente Prueba', 'email': 'cliente_prueba@email.com', 'role': 'client', 'credits': state.credits},
-      {'name': 'María González', 'email': 'maria.g@gmail.com', 'role': 'client', 'credits': 12},
-      {'name': 'Carlos Pérez', 'email': 'carlos.p@gmail.com', 'role': 'client', 'credits': 3},
-      {'name': 'Laura Medina', 'email': 'laura.m@gmail.com', 'role': 'client', 'credits': 8},
-      {'name': 'Juan Rodríguez', 'email': 'juan.r@gmail.com', 'role': 'client', 'credits': 5},
-    ];
+    // Load dynamic users list from database state
+    _allUsers = state.users.isNotEmpty
+        ? state.users
+        : [
+            {'name': 'Root Admin', 'email': 'root@myapp.com', 'role': 'root', 'credits': 999},
+            {'name': 'Admin General', 'email': 'admin@myapp.com', 'role': 'admin', 'credits': 999},
+            {'name': 'Cliente Prueba', 'email': 'cliente_prueba@email.com', 'role': 'client', 'credits': state.credits},
+          ];
 
     // Filter list
     final filteredUsers = _allUsers.where((u) {
@@ -356,11 +346,12 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
             ),
           ),
 
-          // Users list
           Expanded(
-            child: filteredUsers.isEmpty
-                ? const Center(child: Text('No se encontraron usuarios.'))
-                : ListView.builder(
+            child: RefreshIndicator(
+              onRefresh: () => state.reloadUsers(),
+              child: filteredUsers.isEmpty
+                  ? const Center(child: Text('No se encontraron usuarios.'))
+                  : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                     itemCount: filteredUsers.length,
                     itemBuilder: (context, index) {
@@ -438,6 +429,7 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                       );
                     },
                   ),
+            ),
           ),
         ],
       ),

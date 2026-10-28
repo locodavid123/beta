@@ -15,6 +15,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   String _searchQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AppStateProvider>(context, listen: false).reloadUsers();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -25,17 +33,15 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     final state = Provider.of<AppStateProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Simulated list of users in the system since we have a mock environment
-    final List<Map<String, dynamic>> mockUsers = [
-      {'email': 'cliente_prueba@email.com', 'name': 'Valentina López', 'role': 'client', 'credits': state.credits},
-      {'email': 'maria.g@gmail.com', 'name': 'María Gutiérrez', 'role': 'client', 'credits': 12},
-      {'email': 'carlos.p@gmail.com', 'name': 'Carlos Pérez', 'role': 'client', 'credits': 3},
-      {'email': 'laura.m@gmail.com', 'name': 'Laura Medina', 'role': 'client', 'credits': 8},
-      {'email': 'juan.r@gmail.com', 'name': 'Juan Rodríguez', 'role': 'client', 'credits': 5},
-      {'email': 'admin@email.com', 'name': 'Admin General', 'role': 'admin', 'credits': 999},
-    ];
+    // Load live client users from database state
+    final clientUsers = state.users.where((u) => u['role'] == 'client').toList();
+    final allClients = clientUsers.isNotEmpty
+        ? clientUsers
+        : [
+            {'email': 'cliente_prueba@email.com', 'name': 'Valentina López', 'role': 'client', 'credits': state.credits},
+          ];
 
-    final filteredUsers = mockUsers.where((u) {
+    final filteredUsers = allClients.where((u) {
       return u['email'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
           u['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
@@ -118,16 +124,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ),
           ),
 
-          // Users list
           Expanded(
-            child: filteredUsers.isEmpty
-                ? Center(
-                    child: Text(
-                      'No se encontraron usuarios.',
-                      style: TextStyle(color: Colors.grey[500]),
-                    ),
-                  )
-                : ListView.builder(
+            child: RefreshIndicator(
+              onRefresh: () => state.reloadUsers(),
+              child: filteredUsers.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No se encontraron usuarios.',
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
+                    )
+                  : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     itemCount: filteredUsers.length,
                     itemBuilder: (context, index) {
@@ -241,6 +248,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       );
                     },
                   ),
+            ),
           ),
         ],
       ),

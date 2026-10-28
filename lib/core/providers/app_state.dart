@@ -54,6 +54,9 @@ class AppStateProvider extends ChangeNotifier {
   List<ModerationReport> _reports = [];
   List<ModerationReport> get reports => _reports;
 
+  List<Map<String, dynamic>> _users = [];
+  List<Map<String, dynamic>> get users => _users;
+
   // App settings
   bool _isDarkMode = false;
   bool get isDarkMode => _isDarkMode;
@@ -139,6 +142,7 @@ class AppStateProvider extends ChangeNotifier {
     _creations = await _firebaseService.getCreations();
     _tutorials = await _firebaseService.getTutorials();
     _reports = await _firebaseService.getReports();
+    _users = await _firebaseService.getUsers();
     notifyListeners();
   }
 
@@ -316,6 +320,21 @@ class AppStateProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> reloadUsers() async {
+    _users = await _firebaseService.getUsers();
+    notifyListeners();
+  }
+
+  Future<void> updateUserRoleAndCredits(String email, String role, int credits, [String? name]) async {
+    await _firebaseService.updateUserInDatabase(email, role, credits, name);
+    await reloadUsers();
+  }
+
+  Future<void> createUserFromAdmin(String name, String email, String role, [int credits = 5]) async {
+    await _firebaseService.addUserToDatabase(name, email, role, credits);
+    await reloadUsers();
   }
 
   Future<void> logoutUser() async {

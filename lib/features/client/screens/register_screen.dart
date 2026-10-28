@@ -77,6 +77,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       await state.registerUser(email, password, name);
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.greenAccent,
+            content: Text('¡Cuenta creada con éxito! Bienvenido, $name.'),
+          ),
+        );
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const AuthGate()),

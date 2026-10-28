@@ -5,6 +5,8 @@ import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/style.dart';
 import '../../../core/models/pet.dart';
+import '../../../core/models/tutorial.dart';
+import 'tutorials_screen.dart';
 
 class StylesCatalogScreen extends StatefulWidget {
   const StylesCatalogScreen({super.key});
@@ -29,6 +31,19 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
       case 'Cute': return 'cat_cute';
       default: return category;
     }
+  }
+
+  Tutorial? _getTutorialForStyle(AppStateProvider state, ArtStyle style) {
+    if (style.tutorialId.isNotEmpty) {
+      final matches = state.tutorials.where((t) => t.id == style.tutorialId);
+      if (matches.isNotEmpty) return matches.first;
+    }
+    final key = style.id.replaceAll('corte_', '');
+    final fallback = state.tutorials.where(
+      (t) => t.id == key || t.id == 't_$key' || t.title.toLowerCase().contains(key),
+    );
+    if (fallback.isNotEmpty) return fallback.first;
+    return null;
   }
 
   final List<String> _categories = [
@@ -172,6 +187,7 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
   Widget _buildStyleCard(BuildContext context, ArtStyle style) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = Provider.of<AppStateProvider>(context, listen: false);
+    final tutorial = _getTutorialForStyle(state, style);
 
     return GestureDetector(
       onTap: () => _showStyleDetailsBottomSheet(context, style),
@@ -334,6 +350,45 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+
+            // Video Tutorial Quick Badge
+            if (tutorial != null)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: GestureDetector(
+                  onTap: () => TutorialsScreen.openTutorialGuide(context, tutorial),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF0000),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.play_circle_fill, color: Colors.white, size: 11),
+                        SizedBox(width: 3),
+                        Text(
+                          'Video',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -573,7 +628,86 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+
+                  // Video Tutorial Section (Direct match)
+                  Builder(
+                    builder: (context) {
+                      final tutorial = _getTutorialForStyle(state, style);
+                      if (tutorial == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF0000).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFFFF0000).withValues(alpha: 0.25),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFF0000),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Tutorial Oficial en Video',
+                                      style: TextStyle(
+                                        color: Color(0xFFFF0000),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      tutorial.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    Text(
+                                      '${tutorial.duration} • ${tutorial.difficulty}',
+                                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  TutorialsScreen.openTutorialGuide(context, tutorial);
+                                },
+                                icon: const Icon(Icons.play_circle_fill, size: 14),
+                                label: const Text('Ver', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF0000),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
 
                   // Action Buttons
                   Padding(

@@ -6,6 +6,7 @@ import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/pet.dart';
 import '../../../core/models/style.dart';
+import '../../../core/models/tutorial.dart';
 import '../../../core/models/creation.dart';
 import '../../../core/services/gemini_service.dart';
 import '../../../core/services/media_export_service.dart';
@@ -904,6 +905,46 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                           color: AppTheme.primaryColor,
                         ),
                       ),
+                    ),
+                    Builder(
+                      builder: (context) {
+                        Tutorial? matchingTut;
+                        if (_selectedStyle!.tutorialId.isNotEmpty) {
+                          final match = state.tutorials.where((t) => t.id == _selectedStyle!.tutorialId);
+                          if (match.isNotEmpty) matchingTut = match.first;
+                        }
+                        if (matchingTut == null) {
+                          final key = _selectedStyle!.id.replaceAll('corte_', '');
+                          final fallback = state.tutorials.where((t) => t.id == key || t.id == 't_$key' || t.title.toLowerCase().contains(key));
+                          if (fallback.isNotEmpty) matchingTut = fallback.first;
+                        }
+                        if (matchingTut == null) return const SizedBox.shrink();
+                        return GestureDetector(
+                          onTap: () => TutorialsScreen.openTutorialGuide(context, matchingTut!),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF0000),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.play_circle_fill, color: Colors.white, size: 13),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Ver Tutorial',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

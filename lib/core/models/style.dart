@@ -10,6 +10,8 @@ class ArtStyle {
   final String coatType; // 'Pelo Largo', 'Pelo Corto', 'Ambos'
   final String difficulty; // 'Fácil', 'Medio', 'Difícil'
   final int uses;
+  final String tutorialId;
+  final String videoUrl;
 
   ArtStyle({
     required this.id,
@@ -23,6 +25,8 @@ class ArtStyle {
     this.coatType = 'Ambos',
     this.difficulty = 'Medio',
     this.uses = 0,
+    this.tutorialId = '',
+    this.videoUrl = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -38,6 +42,8 @@ class ArtStyle {
       'coatType': coatType,
       'difficulty': difficulty,
       'uses': uses,
+      'tutorialId': tutorialId,
+      'videoUrl': videoUrl,
     };
   }
 
@@ -54,6 +60,41 @@ class ArtStyle {
       coatType: map['coatType'] ?? 'Ambos',
       difficulty: map['difficulty'] ?? 'Medio',
       uses: map['uses'] ?? 0,
+      tutorialId: map['tutorialId'] ?? '',
+      videoUrl: map['videoUrl'] ?? '',
+    );
+  }
+
+  ArtStyle copyWith({
+    String? id,
+    String? name,
+    String? category,
+    String? imagePath,
+    String? description,
+    bool? isHot,
+    String? status,
+    String? promptTemplate,
+    String? coatType,
+    String? difficulty,
+    int? uses,
+    String? tutorialId,
+    String? videoUrl,
+  }) {
+    return ArtStyle(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      imagePath: imagePath ?? this.imagePath,
+      description: description ?? this.description,
+      isHot: isHot ?? this.isHot,
+      status: status ?? this.status,
+      promptTemplate: promptTemplate ?? this.promptTemplate,
+      coatType: coatType ?? this.coatType,
+      difficulty: difficulty ?? this.difficulty,
+      uses: uses ?? this.uses,
+      tutorialId: tutorialId ?? this.tutorialId,
+      videoUrl: videoUrl ?? this.videoUrl,
     );
   }
 }
+

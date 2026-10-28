@@ -71,11 +71,21 @@ class FirebaseService {
         await stylesColl.doc(id).delete();
       }
 
-      // Load/Seed default styles if not already present
+      // Load/Seed default styles if not already present or update metadata
       for (var s in _getDefaultStyles()) {
         final doc = await stylesColl.doc(s.id).get();
         if (!doc.exists) {
           await stylesColl.doc(s.id).set(s.toMap());
+        } else {
+          final data = doc.data();
+          if (data != null && (data['tutorialId'] != s.tutorialId || data['videoUrl'] != s.videoUrl || data['name'] != s.name)) {
+            await stylesColl.doc(s.id).update({
+              'tutorialId': s.tutorialId,
+              'videoUrl': s.videoUrl,
+              'name': s.name,
+              'category': s.category,
+            });
+          }
         }
       }
     } catch (e) {
@@ -140,28 +150,29 @@ class FirebaseService {
       }
       // Explicitly remove the deprecated/deleted default concept styles
       final idsToRemove = {'realeza', 'cosmico', 'cyberpunk', 'acuarela', 'steampunk', 'kawaii'};
-      bool removedAny = false;
-      _mockStyles.removeWhere((s) {
-        if (idsToRemove.contains(s.id)) {
-          removedAny = true;
-          return true;
-        }
-        return false;
-      });
+      _mockStyles.removeWhere((s) => idsToRemove.contains(s.id));
 
-      // Add any missing default styles (e.g. the new Shih Tzu grooming cuts)
+      // Add and update official styles with tutorial links
       final defaultStyles = _getDefaultStyles();
-      bool addedAny = false;
       for (var def in defaultStyles) {
-        if (!_mockStyles.any((s) => s.id == def.id)) {
+        final idx = _mockStyles.indexWhere((s) => s.id == def.id);
+        if (idx == -1) {
           _mockStyles.add(def);
-          addedAny = true;
+        } else {
+          _mockStyles[idx] = def;
         }
       }
-      if (addedAny || removedAny) {
-        await _saveMockStyles();
-      }
+      final order = ['corte_cachorro', 'corte_oso', 'corte_topknot', 'corte_leon', 'corte_exhibicion'];
+      _mockStyles.sort((a, b) {
+        int idxA = order.indexOf(a.id);
+        int idxB = order.indexOf(b.id);
+        if (idxA == -1) idxA = 999;
+        if (idxB == -1) idxB = 999;
+        return idxA.compareTo(idxB);
+      });
+      await _saveMockStyles();
     } else {
+      _mockStyles.clear();
       _mockStyles.addAll(_getDefaultStyles());
       await _saveMockStyles();
     }
@@ -356,10 +367,12 @@ class FirebaseService {
         coatType: 'Pelo Corto',
         difficulty: 'Fácil',
         uses: 340,
+        tutorialId: 't1',
+        videoUrl: 'https://youtu.be/f5oRAy-WARA',
       ),
       ArtStyle(
         id: 'corte_oso',
-        name: 'Corte Oso de Peluche',
+        name: 'Corte Oso de Peluche (Teddy Bear)',
         category: 'Cute',
         imagePath: 'assets/images/corte_oso.png',
         description: 'Cuerpo recortado a longitud media y cabeza redondeada y esponjosa, dándole la apariencia tierna de un osito.',
@@ -369,36 +382,12 @@ class FirebaseService {
         coatType: 'Ambos',
         difficulty: 'Medio',
         uses: 289,
-      ),
-      ArtStyle(
-        id: 'corte_leon',
-        name: 'Corte de León',
-        category: 'Fantasía',
-        imagePath: 'assets/images/corte_leon.png',
-        description: 'Cuerpo y patas recortados muy cortos, dejando una melena abundante y majestuosa alrededor del cuello y la cabeza.',
-        isHot: false,
-        status: 'activo',
-        promptTemplate: 'A majestic [breed] dog groomed with a lion cut, showing a neatly shaved body and limbs with a full, fluffy lion-like mane around its head and neck, looking proud.',
-        coatType: 'Pelo Largo',
-        difficulty: 'Difícil',
-        uses: 120,
-      ),
-      ArtStyle(
-        id: 'corte_exhibicion',
-        name: 'Corte de Exhibición',
-        category: 'Clásico',
-        imagePath: 'assets/images/corte_exhibicion.png',
-        description: 'El pelaje largo y sedoso tradicional que llega hasta el suelo, requiriendo cepillado diario y cuidado premium.',
-        isHot: false,
-        status: 'activo',
-        promptTemplate: 'A show-quality [breed] dog with a gorgeous, long flowing silky coat reaching the ground, head hair gathered in a classic topknot with a red ribbon bow.',
-        coatType: 'Pelo Largo',
-        difficulty: 'Difícil',
-        uses: 95,
+        tutorialId: 't_oso',
+        videoUrl: 'https://youtu.be/toHlRfTARaQ',
       ),
       ArtStyle(
         id: 'corte_topknot',
-        name: 'Corte Top Knot',
+        name: 'Corte Moño Superior (Top Knot)',
         category: 'Cute',
         imagePath: 'assets/images/corte_topknot.png',
         description: 'El pelo de la cabeza se recoge elegantemente en una coleta o moño, sujetado con un lazo, mientras el cuerpo puede ir corto o largo.',
@@ -408,6 +397,38 @@ class FirebaseService {
         coatType: 'Pelo Largo',
         difficulty: 'Medio',
         uses: 180,
+        tutorialId: 't6',
+        videoUrl: 'https://youtu.be/wRnLLl3VDRE',
+      ),
+      ArtStyle(
+        id: 'corte_leon',
+        name: 'Corte de León (Lion Cut)',
+        category: 'Fantasía',
+        imagePath: 'assets/images/corte_leon.png',
+        description: 'Cuerpo y patas recortados muy cortos, dejando una melena abundante y majestuosa alrededor del cuello y la cabeza.',
+        isHot: false,
+        status: 'activo',
+        promptTemplate: 'A majestic [breed] dog groomed with a lion cut, showing a neatly shaved body and limbs with a full, fluffy lion-like mane around its head and neck, looking proud.',
+        coatType: 'Pelo Largo',
+        difficulty: 'Difícil',
+        uses: 120,
+        tutorialId: 't_leon',
+        videoUrl: 'https://youtu.be/65nmhuunf7k',
+      ),
+      ArtStyle(
+        id: 'corte_exhibicion',
+        name: 'Manto Largo Tradicional de Exhibición',
+        category: 'Clásico',
+        imagePath: 'assets/images/corte_exhibicion.png',
+        description: 'El pelaje largo y sedoso tradicional que llega hasta el suelo, requiriendo cepillado diario y cuidado premium.',
+        isHot: false,
+        status: 'activo',
+        promptTemplate: 'A show-quality [breed] dog with a gorgeous, long flowing silky coat reaching the ground, head hair gathered in a classic topknot with a red ribbon bow.',
+        coatType: 'Pelo Largo',
+        difficulty: 'Difícil',
+        uses: 95,
+        tutorialId: 't_exhibicion',
+        videoUrl: 'https://youtu.be/tx8xQy0PYWY',
       ),
     ];
   }
@@ -932,22 +953,44 @@ class FirebaseService {
 
   // --- Styles API (Dynamic Catalogue) ---
   Future<List<ArtStyle>> getStyles() async {
+    if (_mockStyles.isEmpty) {
+      _mockStyles.addAll(_getDefaultStyles());
+    }
+    final order = ['corte_cachorro', 'corte_oso', 'corte_topknot', 'corte_leon', 'corte_exhibicion'];
     if (_isFirebaseInitialized) {
       try {
         final snapshot = await FirebaseFirestore.instance.collection('styles').get();
         if (snapshot.docs.isEmpty) {
-          return _mockStyles;
+          return List<ArtStyle>.from(_mockStyles);
         }
         final list = snapshot.docs.map((doc) => ArtStyle.fromMap(doc.data())).toList();
         final idsToRemove = {'realeza', 'cosmico', 'cyberpunk', 'acuarela', 'steampunk', 'kawaii'};
         list.removeWhere((s) => idsToRemove.contains(s.id));
+
+        // Merge official tutorial links and sort
+        final defs = _getDefaultStyles();
+        for (var def in defs) {
+          final idx = list.indexWhere((s) => s.id == def.id);
+          if (idx == -1) {
+            list.add(def);
+          } else if (list[idx].tutorialId.isEmpty || list[idx].videoUrl.isEmpty) {
+            list[idx] = def;
+          }
+        }
+        list.sort((a, b) {
+          int idxA = order.indexOf(a.id);
+          int idxB = order.indexOf(b.id);
+          if (idxA == -1) idxA = 999;
+          if (idxB == -1) idxB = 999;
+          return idxA.compareTo(idxB);
+        });
         return list;
       } catch (e) {
         if (kDebugMode) print("Error fetching styles: $e");
-        return _mockStyles;
+        return List<ArtStyle>.from(_mockStyles);
       }
     } else {
-      return _mockStyles;
+      return List<ArtStyle>.from(_mockStyles);
     }
   }
 

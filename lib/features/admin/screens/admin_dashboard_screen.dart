@@ -4,7 +4,6 @@ import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/auth_gate.dart';
 import '../../client/screens/navigation_holder.dart';
-import '../../root/screens/root_dashboard_screen.dart';
 import 'admin_catalog_screen.dart';
 import 'admin_history_screen.dart';
 import 'admin_tutorials_screen.dart';
@@ -40,24 +39,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (state.userRole == 'root') {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
-                (route) => false,
-              );
-            } else {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-                (route) => false,
-              );
-            }
-          },
-        ),
+        automaticallyImplyLeading: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -76,21 +58,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) async {
-              if (value == 'home') {
-                if (state.userRole == 'root') {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
-                    (route) => false,
-                  );
-                } else {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-                    (route) => false,
-                  );
-                }
-              } else if (value == 'client') {
+              if (value == 'client') {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const NavigationHolder()),
@@ -128,16 +96,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             },
             offset: const Offset(0, 48),
             itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'home',
-                child: Row(
-                  children: [
-                    Icon(Icons.home_outlined, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text('Volver al panel principal'),
-                  ],
-                ),
-              ),
               const PopupMenuItem<String>(
                 value: 'client',
                 child: Row(

@@ -339,14 +339,35 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateUserRoleAndCredits(String email, String role, int credits, [String? name]) async {
-    await _firebaseService.updateUserInDatabase(email, role, credits, name);
+  Future<void> updateUserRoleAndCredits(String email, String role, int credits, [String? name, String? password]) async {
+    await _firebaseService.updateUserInDatabase(email, role, credits, name, password);
+    if (email.trim().toLowerCase() == userEmail.trim().toLowerCase()) {
+      _credits = credits;
+    }
     await reloadUsers();
   }
 
-  Future<void> createUserFromAdmin(String name, String email, String role, [int credits = 5]) async {
-    await _firebaseService.addUserToDatabase(name, email, role, credits);
+  Future<void> createUserFromAdmin(String name, String email, String role, [int credits = 5, String password = 'password123']) async {
+    await _firebaseService.addUserToDatabase(name, email, role, credits, password);
     await reloadUsers();
+  }
+
+  Future<void> deleteUser(String email) async {
+    await _firebaseService.deleteUserFromDatabase(email);
+    await reloadUsers();
+  }
+
+  Future<void> addUserCredits(String email, int amount) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final user = _users.firstWhere(
+      (u) => (u['email'] ?? '').toString().trim().toLowerCase() == cleanEmail,
+      orElse: () => {},
+    );
+    final currentCredits = (user['credits'] as int?) ?? (cleanEmail == 'cliente_prueba@email.com' ? _credits : 5);
+    final newCredits = currentCredits + amount;
+    final role = (user['role'] as String?) ?? 'client';
+    final name = (user['name'] as String?) ?? (cleanEmail == 'cliente_prueba@email.com' ? 'Valentina López' : 'Usuario');
+    await updateUserRoleAndCredits(cleanEmail, role, newCredits, name);
   }
 
   Future<void> logoutUser() async {

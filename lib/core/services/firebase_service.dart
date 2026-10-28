@@ -1042,7 +1042,14 @@ class FirebaseService {
       } catch (_) {}
     }
 
-    // 3. Ensure official root and admin accounts are present
+    final deletedEmails = (prefs.getStringList('deleted_users') ?? [])
+        .map((e) => e.trim().toLowerCase())
+        .toSet();
+
+    // Remove any deleted emails from result
+    result.removeWhere((u) => deletedEmails.contains((u['email'] ?? '').toString().toLowerCase()));
+
+    // 3. Ensure official root and admin accounts are present (if not deleted)
     final defaultUsers = [
       {'name': 'Root Admin', 'email': 'root@email.com', 'role': 'root', 'credits': 999},
       {'name': 'Root Admin', 'email': 'root@myapp.com', 'role': 'root', 'credits': 999},
@@ -1053,7 +1060,7 @@ class FirebaseService {
 
     for (var def in defaultUsers) {
       final email = def['email'].toString().trim().toLowerCase();
-      if (!seenEmails.contains(email)) {
+      if (!seenEmails.contains(email) && !deletedEmails.contains(email)) {
         seenEmails.add(email);
         result.add(Map<String, dynamic>.from(def));
       }
@@ -1062,7 +1069,7 @@ class FirebaseService {
     return result;
   }
 
-  Future<void> updateUserInDatabase(String email, String newRole, int newCredits, [String? newName]) async {
+  Future<void> updateUserInDatabase(String email, String newRole, int newCredits, [String? newName, String? newPassword]) async {
     final cleanEmail = email.trim().toLowerCase();
     final prefs = await SharedPreferences.getInstance();
 
@@ -1088,22 +1095,37 @@ class FirebaseService {
       }
     }
 
-    // 2. Update in local storage
+    // 2. Update in local storage (ensuring it's saved even if user wasn't in mock_users yet)
     final usersJson = prefs.getString('mock_users');
+    List<dynamic> users = [];
     if (usersJson != null) {
       try {
-        List<dynamic> users = jsonDecode(usersJson);
-        final idx = users.indexWhere((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail);
-        if (idx != -1) {
-          users[idx]['role'] = newRole;
-          users[idx]['credits'] = newCredits;
-          if (newName != null && newName.isNotEmpty) {
-            users[idx]['name'] = newName;
-          }
-          await prefs.setString('mock_users', jsonEncode(users));
-        }
+        users = jsonDecode(usersJson);
       } catch (_) {}
     }
+
+    final idx = users.indexWhere((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail);
+    if (idx != -1) {
+      users[idx]['role'] = newRole;
+      users[idx]['credits'] = newCredits;
+      if (newName != null && newName.isNotEmpty) {
+        users[idx]['name'] = newName;
+      }
+      if (newPassword != null && newPassword.isNotEmpty) {
+        users[idx]['password'] = newPassword;
+      }
+    } else {
+      users.add({
+        'uid': 'local_${cleanEmail.hashCode}',
+        'name': newName ?? 'Usuario',
+        'email': cleanEmail,
+        'role': newRole,
+        'credits': newCredits,
+        'password': (newPassword != null && newPassword.isNotEmpty) ? newPassword : 'password123',
+        'photoUrl': '',
+      });
+    }
+    await prefs.setString('mock_users', jsonEncode(users));
 
     // 3. If currently logged in user is being edited, update active session
     if (_currentUserEmail?.toLowerCase() == cleanEmail) {
@@ -1117,9 +1139,17 @@ class FirebaseService {
     }
   }
 
-  Future<void> addUserToDatabase(String name, String email, String role, int credits) async {
+  Future<void> addUserToDatabase(String name, String email, String role, int credits, [String password = 'password123']) async {
     final cleanEmail = email.trim().toLowerCase();
     final cleanName = name.trim();
+    final prefs = await SharedPreferences.getInstance();
+
+    // Ensure it's not marked as deleted
+    final deletedList = prefs.getStringList('deleted_users') ?? [];
+    if (deletedList.contains(cleanEmail)) {
+      deletedList.remove(cleanEmail);
+      await prefs.setStringList('deleted_users', deletedList);
+    }
 
     // 1. Add to Firestore
     if (_isFirebaseInitialized) {
@@ -1139,7 +1169,44 @@ class FirebaseService {
     }
 
     // 2. Add to local storage
-    await _saveUserToLocalMock(cleanName, cleanEmail, 'password123', role, credits);
+    await _saveUserToLocalMock(cleanName, cleanEmail, password, role, credits);
+  }
+
+  Future<void> deleteUserFromDatabase(String email) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Delete from Firestore if connected
+    if (_isFirebaseInitialized) {
+      try {
+        final query = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: cleanEmail)
+            .get();
+        for (var doc in query.docs) {
+          await doc.reference.delete();
+        }
+      } catch (e) {
+        if (kDebugMode) print("Error deleting user from Firestore: $e");
+      }
+    }
+
+    // 2. Delete from local storage
+    final usersJson = prefs.getString('mock_users');
+    if (usersJson != null) {
+      try {
+        List<dynamic> users = jsonDecode(usersJson);
+        users.removeWhere((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail);
+        await prefs.setString('mock_users', jsonEncode(users));
+      } catch (_) {}
+    }
+
+    // 3. Mark as deleted so defaultUsers won't bring it back
+    final deletedList = prefs.getStringList('deleted_users') ?? [];
+    if (!deletedList.contains(cleanEmail)) {
+      deletedList.add(cleanEmail);
+      await prefs.setStringList('deleted_users', deletedList);
+    }
   }
 
   Future<void> signOut() async {

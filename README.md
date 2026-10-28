@@ -109,7 +109,7 @@ beta/
 
 4. **Configurar la Clave de Google Gemini (Opcional):**
    * La aplicación incluye preconfigurada la clave por defecto en `lib/core/config/app_config.dart`.
-   * Si deseas usar tu propia clave gratuita de Google AI Studio, puedes definirla en ese archivo o ingresarla directamente en la app desde **Perfil > Configuración > Clave API de Gemini**.
+   * Si deseas usar tu propia clave gratuita de Google AI Studio, puedes definirla en ese archivo o gestionarla desde la consola de administración en **Panel Root > Configuración del Sistema**.
 
 5. **Ejecutar en modo depuración:**
    ```bash

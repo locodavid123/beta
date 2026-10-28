@@ -40,16 +40,7 @@ class _RootDashboardScreenState extends State<RootDashboardScreen> {
             ),
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
-              (route) => false,
-            );
-          },
-        ),
+        automaticallyImplyLeading: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -68,13 +59,7 @@ class _RootDashboardScreenState extends State<RootDashboardScreen> {
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) async {
-              if (value == 'home') {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const RootDashboardScreen()),
-                  (route) => false,
-                );
-              } else if (value == 'client') {
+              if (value == 'client') {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const NavigationHolder()),
@@ -112,16 +97,6 @@ class _RootDashboardScreenState extends State<RootDashboardScreen> {
             },
             offset: const Offset(0, 48),
             itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'home',
-                child: Row(
-                  children: [
-                    Icon(Icons.home_outlined, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text('Volver al panel principal'),
-                  ],
-                ),
-              ),
               const PopupMenuItem<String>(
                 value: 'client',
                 child: Row(

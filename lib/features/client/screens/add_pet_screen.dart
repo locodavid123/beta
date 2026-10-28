@@ -658,7 +658,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
     GeminiResult result;
 
     final activeKey = state.geminiApiKey.trim().isNotEmpty &&
-            !state.geminiApiKey.trim().startsWith('AIzaSy')
+            !state.geminiApiKey.trim().contains('AIzaSyBFWudg')
         ? state.geminiApiKey.trim()
         : AppConfig.defaultGeminiApiKey.trim();
 
@@ -669,6 +669,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
         isShihTzu: false,
         breed: 'No configurado',
         message: 'No se encontró una clave de Gemini activa para verificar la raza Shih Tzu.',
+        isServiceError: true,
       );
     }
 
@@ -692,12 +693,6 @@ class _AddPetScreenState extends State<AddPetScreen> {
         );
       }
     } else {
-      setState(() {
-        _imageFile = null;
-        _isVerified = false;
-        _breedController.clear();
-      });
-
       if (mounted) {
         showDialog(
           context: context,
@@ -705,25 +700,54 @@ class _AddPetScreenState extends State<AddPetScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: AppTheme.redAccent, size: 28),
+                const Icon(Icons.warning_amber_rounded, color: AppTheme.goldAccent, size: 28),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(state.translate('pet_verify_failed_title')),
+                  child: Text(
+                    result.isServiceError
+                        ? 'Servicio de IA Ocupado'
+                        : state.translate('pet_verify_failed_title'),
+                  ),
                 ),
               ],
             ),
             content: Text(
-              '${result.message}\n\n${state.translate('pet_verify_failed_desc')}',
+              '${result.message}\n\nSi tu perrito es un Shih Tzu (o cachorro/con corte corto), puedes confirmarlo manualmente para continuar.',
             ),
             actions: [
               TextButton(
-                style: TextButton.styleFrom(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _imageFile = null;
+                    _isVerified = false;
+                    _breedController.clear();
+                  });
+                },
+                child: Text(state.translate('pet_btn_understood')),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_circle_outline, size: 16),
+                label: const Text('Mi mascota es Shih Tzu (Continuar)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  backgroundColor: AppTheme.redAccent,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () => Navigator.pop(context),
-                child: Text(state.translate('pet_btn_understood')),
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _imageFile = file;
+                    _isVerified = true;
+                    _breedController.text = 'Shih Tzu';
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      backgroundColor: AppTheme.greenAccent,
+                      content: Text('¡Excelente! Mascota confirmada como Shih Tzu.'),
+                    ),
+                  );
+                },
               ),
             ],
           ),

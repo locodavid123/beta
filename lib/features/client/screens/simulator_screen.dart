@@ -1556,7 +1556,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     GeminiResult result;
 
     final activeKey = state.geminiApiKey.trim().isNotEmpty &&
-            !state.geminiApiKey.trim().startsWith('AIzaSy')
+            !state.geminiApiKey.trim().contains('AIzaSyBFWudg')
         ? state.geminiApiKey.trim()
         : AppConfig.defaultGeminiApiKey.trim();
 
@@ -1567,6 +1567,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         isShihTzu: false,
         breed: 'No configurado',
         message: 'No se encontró una clave de Gemini activa para verificar la raza Shih Tzu.',
+        isServiceError: true,
       );
     }
 
@@ -1590,11 +1591,6 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         );
       }
     } else {
-      setState(() {
-        _newPetImageFile = null;
-        _isNewPetVerified = false;
-      });
-
       if (mounted) {
         showDialog(
           context: context,
@@ -1602,25 +1598,53 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: AppTheme.redAccent, size: 28),
+                const Icon(Icons.warning_amber_rounded, color: AppTheme.goldAccent, size: 28),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(state.translate('pet_verify_failed_title')),
+                  child: Text(
+                    result.isServiceError
+                        ? 'Servicio de IA Ocupado'
+                        : state.translate('pet_verify_failed_title'),
+                  ),
                 ),
               ],
             ),
             content: Text(
-              '${result.message}\n\n${state.translate('pet_verify_failed_desc')}',
+              '${result.message}\n\nSi tu mascota es un Shih Tzu, puedes confirmarlo manualmente para continuar con la simulación.',
             ),
             actions: [
               TextButton(
-                style: TextButton.styleFrom(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _newPetImageFile = null;
+                    _isNewPetVerified = false;
+                  });
+                },
+                child: Text(state.translate('pet_btn_understood')),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_circle_outline, size: 16),
+                label: const Text('Confirmar Shih Tzu y Continuar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  backgroundColor: AppTheme.redAccent,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () => Navigator.pop(context),
-                child: Text(state.translate('pet_btn_understood')),
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _newPetImageFile = file;
+                    _isNewPetVerified = true;
+                    _errorMessage = null;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      backgroundColor: AppTheme.greenAccent,
+                      content: Text('¡Foto lista para simular el corte!'),
+                    ),
+                  );
+                },
               ),
             ],
           ),

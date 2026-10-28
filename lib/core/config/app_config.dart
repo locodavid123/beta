@@ -9,9 +9,17 @@ class AppConfig {
     return utf8.decode(base64.decode(encoded));
   }
 
-  /// Modelo oficial de Gemini a utilizar
-  static const String geminiModel = 'gemini-2.5-flash';
+  /// Modelo oficial de Gemini a utilizar (3.5-flash cuenta con cuota completa y alta velocidad)
+  static const String geminiModel = 'gemini-3.5-flash';
 
-  /// Verificación estricta asistida por IA
+  /// Modelos de respaldo en caso de cuota agotada o saturación
+  static const List<String> fallbackModels = [
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash',
+  ];
+
+  /// Verificación asistida por IA con gracia para el usuario
   static const bool autoApproveWithoutKey = false;
 }

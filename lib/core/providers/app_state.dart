@@ -115,7 +115,6 @@ class AppStateProvider extends ChangeNotifier {
     final savedApiKey = prefs.getString('gemini_api_key');
     if (savedApiKey != null &&
         savedApiKey.trim().isNotEmpty &&
-        !savedApiKey.startsWith('AIzaSy') &&
         !savedApiKey.contains('AIzaSyBFWudg')) {
       _geminiApiKey = savedApiKey.trim();
     } else {

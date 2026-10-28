@@ -161,10 +161,10 @@ class _CoatScannerScreenState extends State<CoatScannerScreen>
       if (mounted) {
         _statusTimer?.cancel();
         setState(() {
-          _diagnosis = GeminiService.diagnoseCoatAndFace(
-            fileToAnalyze!,
-            state.geminiApiKey,
-          ) as dynamic;
+          _diagnosis = GeminiService.buildFallbackDiagnosis(
+            isError: true,
+            errorReason: 'Error al procesar escaneo',
+          );
           _isScanning = false;
         });
       }

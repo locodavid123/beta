@@ -1,8 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite lectura y escritura a todos los usuarios de la aplicación Shih Tzu
-    match /{document=**} {
+
+    // Catálogo de estilos y tutoriales: lectura pública para todos, escritura permitida
+    match /styles/{styleId} {
+      allow read, write: if true;
+    }
+
+    match /tutorials/{tutorialId} {
+      allow read, write: if true;
+    }
+
+    // Creaciones y fotos: lectura pública, escritura para usuarios
+    match /creations/{creationId} {
+      allow read, write: if true;
+    }
+
+    // Mascotas, reportes y usuarios: acceso permitido a la app
+    match /pets/{petId} {
+      allow read, write: if true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /reports/{reportId} {
       allow read, write: if true;
     }
   }

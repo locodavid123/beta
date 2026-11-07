@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,7 +10,7 @@ import '../../../core/models/style.dart';
 import '../../../core/models/coat_diagnosis.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/services/gemini_service.dart';
-import '../../../core/services/media_export_service.dart';
+import '../../../core/services/image_input_service.dart';
 import '../../../core/theme/app_theme.dart';
 import 'tutorials_screen.dart';
 
@@ -26,7 +26,7 @@ class CoatScannerScreen extends StatefulWidget {
 class _CoatScannerScreenState extends State<CoatScannerScreen>
     with SingleTickerProviderStateMixin {
   Pet? _selectedPet;
-  File? _customImageFile;
+  XFile? _customImageFile;
   bool _useCustomPhoto = false;
 
   bool _isScanning = false;
@@ -78,9 +78,9 @@ class _CoatScannerScreenState extends State<CoatScannerScreen>
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: source,
+      final picked = await pickImage(
+        context,
+        source,
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 88,
@@ -88,7 +88,7 @@ class _CoatScannerScreenState extends State<CoatScannerScreen>
 
       if (picked != null) {
         setState(() {
-          _customImageFile = File(picked.path);
+          _customImageFile = picked;
           _useCustomPhoto = true;
           _diagnosis = null;
         });
@@ -106,23 +106,28 @@ class _CoatScannerScreenState extends State<CoatScannerScreen>
 
   Future<void> _startDiagnosis() async {
     final state = Provider.of<AppStateProvider>(context, listen: false);
-    File? fileToAnalyze;
+    Uint8List? imageBytes;
+    String imageName = '';
 
     if (_useCustomPhoto && _customImageFile != null) {
-      fileToAnalyze = _customImageFile;
+      imageBytes = await _customImageFile!.readAsBytes();
+      imageName = _customImageFile!.name;
     } else if (_selectedPet != null) {
       try {
-        fileToAnalyze = await MediaExportService.getExportableFile(_selectedPet!.imagePath);
+        imageBytes = await readImageBytes(_selectedPet!.imagePath);
+        imageName = _selectedPet!.imagePath;
       } catch (_) {
-        fileToAnalyze = null;
+        imageBytes = null;
       }
     }
 
-    if (fileToAnalyze == null) {
+    if (imageBytes == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor selecciona una mascota o sube una fotografía.'),
+          content: Text(
+            'Por favor selecciona una mascota o sube una fotografía.',
+          ),
           backgroundColor: Colors.orangeAccent,
         ),
       );
@@ -139,14 +144,16 @@ class _CoatScannerScreenState extends State<CoatScannerScreen>
     _statusTimer = Timer.periodic(const Duration(milliseconds: 1400), (timer) {
       if (mounted) {
         setState(() {
-          _scanningStepIndex = (_scanningStepIndex + 1) % _scanningMessages.length;
+          _scanningStepIndex =
+              (_scanningStepIndex + 1) % _scanningMessages.length;
         });
       }
     });
 
     try {
       final result = await GeminiService.diagnoseCoatAndFace(
-        fileToAnalyze,
+        imageBytes,
+        imageName,
         state.geminiApiKey,
       );
 
@@ -178,23 +185,31 @@ class _CoatScannerScreenState extends State<CoatScannerScreen>
     ArtStyle? matchedStyle;
     try {
       matchedStyle = state.styles.firstWhere(
-        (s) => s.id == diag.recommendedStyleId || s.name.toLowerCase().contains(diag.recommendedStyleId.replaceAll('_', ' ')),
+        (s) =>
+            s.id == diag.recommendedStyleId ||
+            s.name.toLowerCase().contains(
+              diag.recommendedStyleId.replaceAll('_', ' '),
+            ),
       );
     } catch (_) {
       matchedStyle = state.styles.isNotEmpty ? state.styles.first : null;
     }
 
-    Pet? petToUse = _selectedPet ?? (state.pets.isNotEmpty ? state.pets.first : null);
+    Pet? petToUse =
+        _selectedPet ?? (state.pets.isNotEmpty ? state.pets.first : null);
 
     if (matchedStyle != null) {
       state.selectStyleForSimulation(matchedStyle, pet: petToUse);
-      Navigator.of(context).pop(); // Go back to tabs (Simulator tab is now active)
+      Navigator.of(
+        context,
+      ).pop(); // Go back to tabs (Simulator tab is now active)
     }
   }
 
   void _shareDiagnosis(CoatDiagnosisResult diag) {
     final petName = _selectedPet?.name ?? 'Mi Shih Tzu';
-    final shareText = '''📋 DIAGNÓSTICO DE SALUD Y ESTILISMO SHIH TZU APP
+    final shareText =
+        '''📋 DIAGNÓSTICO DE SALUD Y ESTILISMO SHIH TZU APP
 🐾 Mascota: $petName (${diag.detectedBreed}) ${diag.isShihTzu ? '✓ Raza Verificada' : ''}
 🏆 Puntuación: ${diag.overallScore}/100 (${diag.scoreLevel})
 👁️ Ojos & Córnea: ${diag.eyeRiskStatus}
@@ -228,7 +243,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
       appBar: AppBar(
         title: const Row(
           children: [
-            Icon(Icons.remove_red_eye_rounded, color: AppTheme.goldAccent, size: 22),
+            Icon(
+              Icons.remove_red_eye_rounded,
+              color: AppTheme.goldAccent,
+              size: 22,
+            ),
             SizedBox(width: 8),
             Text(
               'Escáner Facial & Manto',
@@ -251,7 +270,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                 SizedBox(width: 4),
                 Text(
                   'Gemini Vision',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
@@ -292,7 +315,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                       color: AppTheme.primaryColor.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.psychology, color: AppTheme.primaryColor, size: 28),
+                    child: const Icon(
+                      Icons.psychology,
+                      color: AppTheme.primaryColor,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
@@ -301,7 +328,10 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                       children: [
                         Text(
                           'Diagnóstico Oftalmo-Estético con IA',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                         SizedBox(height: 4),
                         Text(
@@ -333,7 +363,9 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                     },
                     selectedColor: AppTheme.primaryColor,
                     labelStyle: TextStyle(
-                      color: !_useCustomPhoto ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                      color: !_useCustomPhoto
+                          ? Colors.white
+                          : (isDark ? Colors.white70 : Colors.black87),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -353,7 +385,9 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                     },
                     selectedColor: AppTheme.primaryColor,
                     labelStyle: TextStyle(
-                      color: _useCustomPhoto ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                      color: _useCustomPhoto
+                          ? Colors.white
+                          : (isDark ? Colors.white70 : Colors.black87),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -372,7 +406,9 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Center(
-                    child: Text('No tienes mascotas registradas. Sube una foto con la opción Cámara/Galería.'),
+                    child: Text(
+                      'No tienes mascotas registradas. Sube una foto con la opción Cámara/Galería.',
+                    ),
                   ),
                 )
               else
@@ -399,13 +435,17 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                             color: isDark ? AppTheme.cardDark : Colors.white,
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
-                              color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                              color: isSelected
+                                  ? AppTheme.primaryColor
+                                  : Colors.transparent,
                               width: 2.5,
                             ),
                             boxShadow: [
                               BoxShadow(
                                 color: isSelected
-                                    ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                                    ? AppTheme.primaryColor.withValues(
+                                        alpha: 0.3,
+                                      )
                                     : Colors.black.withValues(alpha: 0.04),
                                 blurRadius: isSelected ? 8 : 4,
                                 offset: const Offset(0, 3),
@@ -424,13 +464,18 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                                         height: 44,
                                         fit: BoxFit.cover,
                                       )
-                                    : Image.file(
-                                        File(pet.imagePath),
+                                    : AppImage(
+                                        path: pet.imagePath,
                                         width: 44,
                                         height: 44,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) =>
-                                            const Icon(Icons.pets, size: 36, color: AppTheme.primaryColor),
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const Icon(
+                                                  Icons.pets,
+                                                  size: 36,
+                                                  color: AppTheme.primaryColor,
+                                                ),
                                       ),
                               ),
                               const SizedBox(height: 6),
@@ -440,8 +485,12 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                  color: isSelected ? AppTheme.primaryColor : null,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? AppTheme.primaryColor
+                                      : null,
                                 ),
                               ),
                             ],
@@ -459,7 +508,9 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       onPressed: () => _pickImage(ImageSource.camera),
                       icon: const Icon(Icons.camera_alt),
@@ -471,7 +522,9 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       onPressed: () => _pickImage(ImageSource.gallery),
                       icon: const Icon(Icons.photo_library),
@@ -495,7 +548,9 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: _isScanning ? Colors.cyanAccent : AppTheme.primaryColor.withValues(alpha: 0.5),
+                        color: _isScanning
+                            ? Colors.cyanAccent
+                            : AppTheme.primaryColor.withValues(alpha: 0.5),
                         width: 2,
                       ),
                       boxShadow: [
@@ -511,33 +566,60 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                       borderRadius: BorderRadius.circular(22),
                       child: _useCustomPhoto
                           ? (_customImageFile != null
-                              ? Image.file(_customImageFile!, fit: BoxFit.cover)
-                              : Container(
-                                  color: isDark ? AppTheme.cardDark : Colors.grey[200],
-                                  child: const Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                                        SizedBox(height: 8),
-                                        Text('Toma o sube una foto de frente', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                                      ],
+                                ? PickedImage(
+                                    image: _customImageFile!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Container(
+                                    color: isDark
+                                        ? AppTheme.cardDark
+                                        : Colors.grey[200],
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.add_a_photo,
+                                            size: 40,
+                                            color: Colors.grey,
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Toma o sube una foto de frente',
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ))
+                                  ))
                           : (_selectedPet != null
-                              ? (_selectedPet!.imagePath.startsWith('assets/')
-                                  ? Image.asset(_selectedPet!.imagePath, fit: BoxFit.cover)
-                                  : Image.file(
-                                      File(_selectedPet!.imagePath),
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const Icon(Icons.pets, size: 60, color: AppTheme.primaryColor),
-                                    ))
-                              : Container(
-                                  color: Colors.grey[200],
-                                  child: const Center(child: Text('Selecciona una mascota')),
-                                )),
+                                ? (_selectedPet!.imagePath.startsWith('assets/')
+                                      ? Image.asset(
+                                          _selectedPet!.imagePath,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : AppImage(
+                                          path: _selectedPet!.imagePath,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  const Icon(
+                                                    Icons.pets,
+                                                    size: 60,
+                                                    color:
+                                                        AppTheme.primaryColor,
+                                                  ),
+                                        ))
+                                : Container(
+                                    color: Colors.grey[200],
+                                    child: const Center(
+                                      child: Text('Selecciona una mascota'),
+                                    ),
+                                  )),
                     ),
                   ),
 
@@ -560,11 +642,18 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                                     height: 4,
                                     decoration: BoxDecoration(
                                       gradient: const LinearGradient(
-                                        colors: [Colors.transparent, Colors.cyanAccent, Colors.pinkAccent, Colors.transparent],
+                                        colors: [
+                                          Colors.transparent,
+                                          Colors.cyanAccent,
+                                          Colors.pinkAccent,
+                                          Colors.transparent,
+                                        ],
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.cyanAccent.withValues(alpha: 0.8),
+                                          color: Colors.cyanAccent.withValues(
+                                            alpha: 0.8,
+                                          ),
                                           blurRadius: 10,
                                           spreadRadius: 2,
                                         ),
@@ -574,7 +663,9 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                                 ),
                                 // Semi-transparent radar grid tint
                                 Container(
-                                  color: Colors.cyanAccent.withValues(alpha: 0.08),
+                                  color: Colors.cyanAccent.withValues(
+                                    alpha: 0.08,
+                                  ),
                                 ),
                               ],
                             );
@@ -592,11 +683,16 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
             if (_isScanning) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? AppTheme.cardDark : Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: Colors.cyanAccent.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -605,14 +701,19 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                       height: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.cyanAccent,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
                         _scanningMessages[_scanningStepIndex],
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -625,14 +726,23 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 4,
                   ),
                   onPressed: _startDiagnosis,
-                  icon: const Icon(Icons.document_scanner_rounded, color: Colors.white),
+                  icon: const Icon(
+                    Icons.document_scanner_rounded,
+                    color: Colors.white,
+                  ),
                   label: const Text(
                     'Escanear con Inteligencia Artificial',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),
@@ -650,7 +760,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
     );
   }
 
-  Widget _buildDiagnosisResults(BuildContext context, CoatDiagnosisResult diag, bool isDark) {
+  Widget _buildDiagnosisResults(
+    BuildContext context,
+    CoatDiagnosisResult diag,
+    bool isDark,
+  ) {
     Color scoreColor = Colors.greenAccent;
     if (diag.overallScore < 75) {
       scoreColor = Colors.orangeAccent;
@@ -688,7 +802,10 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
             decoration: BoxDecoration(
               color: const Color(0xFF2EC4B6).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF2EC4B6).withValues(alpha: 0.4), width: 1.2),
+              border: Border.all(
+                color: const Color(0xFF2EC4B6).withValues(alpha: 0.4),
+                width: 1.2,
+              ),
             ),
             child: Row(
               children: [
@@ -716,7 +833,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                             ),
                           ),
                           SizedBox(width: 6),
-                          Icon(Icons.verified, color: Color(0xFF2EC4B6), size: 16),
+                          Icon(
+                            Icons.verified,
+                            color: Color(0xFF2EC4B6),
+                            size: 16,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 2),
@@ -741,7 +862,10 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
             decoration: BoxDecoration(
               color: Colors.orangeAccent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.4), width: 1.2),
+              border: Border.all(
+                color: Colors.orangeAccent.withValues(alpha: 0.4),
+                width: 1.2,
+              ),
             ),
             child: Row(
               children: [
@@ -751,7 +875,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                     color: Colors.orangeAccent,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.info_outline, color: Colors.white, size: 16),
+                  child: const Icon(
+                    Icons.info_outline,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -837,7 +965,10 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: scoreColor.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(12),
@@ -926,17 +1057,27 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                 children: [
                   const Icon(Icons.pets, color: Colors.purpleAccent, size: 20),
                   const SizedBox(width: 8),
-                  const Text('Estado del Manto & Nudos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const Text(
+                    'Estado del Manto & Nudos',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.purpleAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'Riesgo: ${diag.mattingRisk}',
-                      style: const TextStyle(color: Colors.purpleAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.purpleAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -961,7 +1102,10 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.4), width: 1.5),
+            border: Border.all(
+              color: AppTheme.goldAccent.withValues(alpha: 0.4),
+              width: 1.5,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -970,7 +1114,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 20),
+                    const Icon(
+                      Icons.auto_awesome,
+                      color: AppTheme.goldAccent,
+                      size: 20,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'CORTE RECOMENDADO POR LA IA',
@@ -986,12 +1134,18 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                 const SizedBox(height: 10),
                 Text(
                   diag.recommendedStyleName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   diag.recommendedStyleReason,
-                  style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[800]),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.grey[300] : Colors.grey[800],
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -1004,24 +1158,44 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                           backgroundColor: AppTheme.primaryColor,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                        onPressed: () => _applyRecommendedStyleInSimulator(diag),
+                        onPressed: () =>
+                            _applyRecommendedStyleInSimulator(diag),
                         icon: const Icon(Icons.auto_fix_high, size: 18),
-                        label: const Text('Probar en Simulador', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        label: const Text(
+                          'Probar en Simulador',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: isDark ? Colors.white : AppTheme.primaryColor,
-                          side: BorderSide(color: isDark ? Colors.white54 : AppTheme.primaryColor),
+                          foregroundColor: isDark
+                              ? Colors.white
+                              : AppTheme.primaryColor,
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.white54
+                                : AppTheme.primaryColor,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         onPressed: () {
-                          final state = Provider.of<AppStateProvider>(context, listen: false);
+                          final state = Provider.of<AppStateProvider>(
+                            context,
+                            listen: false,
+                          );
                           final tut = state.getTutorialForStyle(
                             styleId: diag.recommendedStyleId,
                             styleName: diag.recommendedStyleName,
@@ -1031,12 +1205,20 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                           } else {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const TutorialsScreen()),
+                              MaterialPageRoute(
+                                builder: (context) => const TutorialsScreen(),
+                              ),
                             );
                           }
                         },
                         icon: const Icon(Icons.play_circle_fill, size: 18),
-                        label: const Text('Ver Video Guía', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        label: const Text(
+                          'Ver Video Guía',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -1050,33 +1232,44 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
         // Action Plan
         Text(
           'Plan de Cuidados en Casa',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 16),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontSize: 16),
         ),
         const SizedBox(height: 10),
-        ...diag.groomingActionPlan.map((action) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.cardDark : Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 6,
+        ...diag.groomingActionPlan.map(
+          (action) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.cardDark : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.green,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    action,
+                    style: const TextStyle(fontSize: 13, height: 1.3),
                   ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.green, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(action, style: const TextStyle(fontSize: 13, height: 1.3)),
-                  ),
-                ],
-              ),
-            )),
+                ),
+              ],
+            ),
+          ),
+        ),
 
         const SizedBox(height: 16),
 
@@ -1098,14 +1291,21 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
                   SizedBox(width: 8),
                   Text(
                     'Ficha Técnica para tu Peluquero Canino (Groomer)',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.deepPurple),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Colors.deepPurple,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 '"${diag.groomerAdvice}"',
-                style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -1130,10 +1330,7 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
         color: isDark ? AppTheme.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8),
         ],
       ),
       child: Column(
@@ -1143,7 +1340,13 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
             children: [
               Icon(icon, color: iconColor, size: 18),
               const SizedBox(width: 6),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1157,7 +1360,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
               status,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: iconColor, fontWeight: FontWeight.bold, fontSize: 11),
+              style: TextStyle(
+                color: iconColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
             ),
           ),
           const SizedBox(height: 6),
@@ -1165,7 +1372,11 @@ Generado por Shih Tzu App con Inteligencia Artificial Gemini Vision ✨''';
             advice,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: Colors.grey, height: 1.25),
+            style: const TextStyle(
+              fontSize: 11,
+              color: Colors.grey,
+              height: 1.25,
+            ),
           ),
         ],
       ),

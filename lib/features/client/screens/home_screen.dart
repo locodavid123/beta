@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/image_input_service.dart';
 import 'history_screen.dart';
 import 'tutorials_screen.dart';
 import 'coat_scanner_screen.dart';
@@ -45,8 +45,8 @@ class HomeScreen extends StatelessWidget {
                             lang == 'English'
                                 ? 'Good morning ☀️'
                                 : lang == 'Português'
-                                    ? 'Bom dia ☀️'
-                                    : 'Buenos días ☀️',
+                                ? 'Bom dia ☀️'
+                                : 'Buenos días ☀️',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.8),
                               fontSize: 14,
@@ -70,25 +70,29 @@ class HomeScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppTheme.goldAccent.withValues(alpha: 0.2),
-                          border: Border.all(color: AppTheme.goldAccent, width: 2),
+                          border: Border.all(
+                            color: AppTheme.goldAccent,
+                            width: 2,
+                          ),
                         ),
                         child: ClipOval(
                           child: state.userPhoto.isNotEmpty
                               ? (state.userPhoto.startsWith('assets/')
-                                  ? Image.asset(
-                                      state.userPhoto,
-                                      width: 46,
-                                      height: 46,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.file(
-                                      File(state.userPhoto),
-                                      width: 46,
-                                      height: 46,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          _buildInitials(state.userName),
-                                    ))
+                                    ? Image.asset(
+                                        state.userPhoto,
+                                        width: 46,
+                                        height: 46,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : AppImage(
+                                        path: state.userPhoto,
+                                        width: 46,
+                                        height: 46,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                _buildInitials(state.userName),
+                                      ))
                               : _buildInitials(state.userName),
                         ),
                       ),
@@ -112,8 +116,8 @@ class HomeScreen extends StatelessWidget {
                         lang == 'English'
                             ? '${state.pets.length} pets'
                             : lang == 'Português'
-                                ? '${state.pets.length} animais'
-                                : '${state.pets.length} mascotas',
+                            ? '${state.pets.length} animais'
+                            : '${state.pets.length} mascotas',
                       ),
                     ],
                   ),
@@ -127,7 +131,9 @@ class HomeScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 lang == 'English' ? 'Quick Access' : 'Acceso Rápido',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 18),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontSize: 18),
               ),
             ),
             const SizedBox(height: 16),
@@ -141,8 +147,8 @@ class HomeScreen extends StatelessWidget {
                     label: lang == 'English'
                         ? 'New Simulation'
                         : lang == 'Português'
-                            ? 'Nova Simulação'
-                            : 'Nueva Simulación',
+                        ? 'Nova Simulação'
+                        : 'Nueva Simulación',
                     icon: Icons.auto_awesome,
                     iconColor: Colors.pinkAccent,
                     onTap: () => state.setNavIndex(2), // Simular
@@ -161,14 +167,16 @@ class HomeScreen extends StatelessWidget {
                     label: lang == 'English'
                         ? 'My History'
                         : lang == 'Português'
-                            ? 'Meu Histórico'
-                            : 'Mi Historial',
+                        ? 'Meu Histórico'
+                        : 'Mi Historial',
                     icon: Icons.folder,
                     iconColor: Colors.blueAccent,
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const HistoryScreen(),
+                        ),
                       );
                     },
                   ),
@@ -177,14 +185,16 @@ class HomeScreen extends StatelessWidget {
                     label: lang == 'English'
                         ? 'Tutorials'
                         : lang == 'Português'
-                            ? 'Tutoriais'
-                            : 'Tutoriales',
+                        ? 'Tutoriais'
+                        : 'Tutoriales',
                     icon: Icons.play_circle_fill,
                     iconColor: Colors.greenAccent,
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const TutorialsScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const TutorialsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -220,7 +230,9 @@ class HomeScreen extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const CoatScannerScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const CoatScannerScreen(),
+                        ),
                       );
                     },
                     child: Padding(
@@ -232,7 +244,10 @@ class HomeScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(12),
@@ -240,7 +255,11 @@ class HomeScreen extends StatelessWidget {
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 14),
+                                      Icon(
+                                        Icons.auto_awesome,
+                                        color: AppTheme.goldAccent,
+                                        size: 14,
+                                      ),
                                       SizedBox(width: 4),
                                       Text(
                                         'NUEVA IA GEMINI VISION',
@@ -273,7 +292,10 @@ class HomeScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 12),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(20),
@@ -290,7 +312,11 @@ class HomeScreen extends StatelessWidget {
                                         ),
                                       ),
                                       SizedBox(width: 4),
-                                      Icon(Icons.arrow_forward, size: 14, color: Color(0xFF6A11CB)),
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 14,
+                                        color: Color(0xFF6A11CB),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -304,7 +330,10 @@ class HomeScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 2,
+                              ),
                             ),
                             child: const Center(
                               child: Icon(
@@ -345,10 +374,15 @@ class HomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     onTap: () {
                       final hotStyle = state.styles.isNotEmpty
-                          ? state.styles.firstWhere((s) => s.isHot, orElse: () => state.styles.first)
+                          ? state.styles.firstWhere(
+                              (s) => s.isHot,
+                              orElse: () => state.styles.first,
+                            )
                           : null;
                       if (hotStyle != null) {
-                        final petToUse = state.pets.isNotEmpty ? state.pets.first : null;
+                        final petToUse = state.pets.isNotEmpty
+                            ? state.pets.first
+                            : null;
                         state.selectStyleForSimulation(hotStyle, pet: petToUse);
                       } else {
                         state.setNavIndex(2);
@@ -361,14 +395,18 @@ class HomeScreen extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
+                              const Icon(
+                                Icons.local_fire_department,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 lang == 'English'
                                     ? 'Trending this week'
                                     : lang == 'Português'
-                                        ? 'Tendência esta semana'
-                                        : 'Tendencia esta semana',
+                                    ? 'Tendência esta semana'
+                                    : 'Tendencia esta semana',
                                 style: TextStyle(
                                   color: Colors.orange[300],
                                   fontWeight: FontWeight.bold,
@@ -380,7 +418,12 @@ class HomeScreen extends StatelessWidget {
                           const SizedBox(height: 12),
                           Text(
                             state.styles.isNotEmpty
-                                ? state.styles.firstWhere((s) => s.isHot, orElse: () => state.styles.first).name
+                                ? state.styles
+                                      .firstWhere(
+                                        (s) => s.isHot,
+                                        orElse: () => state.styles.first,
+                                      )
+                                      .name
                                 : 'Corte Oso de Peluche',
                             style: const TextStyle(
                               color: Colors.white,
@@ -396,14 +439,18 @@ class HomeScreen extends StatelessWidget {
                                 lang == 'English'
                                     ? 'More than 200 users used it'
                                     : lang == 'Português'
-                                        ? 'Mais de 200 usuários usaram'
-                                        : 'Más de 200 usuarios lo usaron',
+                                    ? 'Mais de 200 usuários usaram'
+                                    : 'Más de 200 usuarios lo usaron',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 13,
                                 ),
                               ),
-                              const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                              const Icon(
+                                Icons.arrow_forward,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ],
                           ),
                         ],
@@ -425,15 +472,19 @@ class HomeScreen extends StatelessWidget {
                     lang == 'English'
                         ? 'My Recent Creations'
                         : lang == 'Português'
-                            ? 'Minhas Criações Recentes'
-                            : 'Mis Creaciones Recientes',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 18),
+                        ? 'Minhas Criações Recentes'
+                        : 'Mis Creaciones Recientes',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontSize: 18),
                   ),
                   TextButton(
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const HistoryScreen(),
+                        ),
                       );
                     },
                     child: Row(
@@ -442,12 +493,19 @@ class HomeScreen extends StatelessWidget {
                           lang == 'English'
                               ? 'See all'
                               : lang == 'Português'
-                                  ? 'Ver tudo'
-                                  : 'Ver todo',
-                          style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                              ? 'Ver tudo'
+                              : 'Ver todo',
+                          style: const TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.primaryColor),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 12,
+                          color: AppTheme.primaryColor,
+                        ),
                       ],
                     ),
                   ),
@@ -463,8 +521,8 @@ class HomeScreen extends StatelessWidget {
                         lang == 'English'
                             ? 'You have no creations yet.'
                             : lang == 'Português'
-                                ? 'Você ainda não tem criações.'
-                                : 'Aún no tienes creaciones.',
+                            ? 'Você ainda não tem criações.'
+                            : 'Aún no tienes creaciones.',
                         style: TextStyle(color: Colors.grey[500]),
                       ),
                     )
@@ -493,7 +551,9 @@ class HomeScreen extends StatelessWidget {
                             children: [
                               // Image Thumbnail
                               ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(20),
+                                ),
                                 child: Image.asset(
                                   creation.imagePath,
                                   height: 100,
@@ -541,9 +601,11 @@ class HomeScreen extends StatelessWidget {
                 lang == 'English'
                     ? 'Tutorials'
                     : lang == 'Português'
-                        ? 'Tutoriais'
-                        : 'Tutoriales',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 18),
+                    ? 'Tutoriais'
+                    : 'Tutoriales',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontSize: 18),
               ),
             ),
             const SizedBox(height: 12),
@@ -552,7 +614,9 @@ class HomeScreen extends StatelessWidget {
               child: Card(
                 elevation: 0,
                 color: isDark ? AppTheme.cardDark : Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -577,7 +641,9 @@ class HomeScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              lang == 'English' ? 'Basic Puppy Cut' : 'Corte Puppy Cut básico',
+                              lang == 'English'
+                                  ? 'Basic Puppy Cut'
+                                  : 'Corte Puppy Cut básico',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
@@ -588,8 +654,8 @@ class HomeScreen extends StatelessWidget {
                               lang == 'English'
                                   ? '12:45 mins • Beginner'
                                   : lang == 'Português'
-                                      ? '12:45 mins • Iniciante'
-                                      : '12:45 mins • Principiante',
+                                  ? '12:45 mins • Iniciante'
+                                  : '12:45 mins • Principiante',
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 13,
@@ -706,13 +772,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Center(
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 24,
-                ),
-              ),
+              child: Center(child: Icon(icon, color: iconColor, size: 24)),
             ),
             const SizedBox(height: 8),
             Text(

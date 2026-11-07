@@ -8,12 +8,12 @@ import 'package:beta/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('App smoke test - verifies app initializes with Provider', (WidgetTester tester) async {
+  testWidgets('App smoke test - verifies app initializes with Provider', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => AppStateProvider()),
-        ],
+        providers: [ChangeNotifierProvider(create: (_) => AppStateProvider())],
         child: const MyApp(),
       ),
     );
@@ -33,6 +33,32 @@ void main() {
     expect(GeminiService.isShihTzuBreed('Golden Retriever'), isFalse);
     expect(GeminiService.isShihTzuBreed('Pug'), isFalse);
     expect(GeminiService.isShihTzuBreed('Labrador Retriever'), isFalse);
+    expect(GeminiService.isShihTzuBreed('Humano'), isFalse);
+  });
+
+  test('only verified Shih Tzu results are eligible for simulation', () {
+    final personPhoto = GeminiResult(
+      isShihTzu: false,
+      breed: 'Humano',
+      message: 'La imagen parece mostrar una persona.',
+    );
+    final serviceFailure = GeminiResult(
+      isShihTzu: true,
+      breed: 'Shih Tzu',
+      message: 'No se pudo verificar.',
+      isServiceError: true,
+    );
+
+    expect(personPhoto.isVerifiedShihTzu, isFalse);
+    expect(serviceFailure.isVerifiedShihTzu, isFalse);
+    expect(
+      GeminiResult(
+        isShihTzu: true,
+        breed: 'Shih Tzu',
+        message: 'Verificado.',
+      ).isVerifiedShihTzu,
+      isTrue,
+    );
   });
 
   test('CoatDiagnosisResult recognizes close Shih Tzu breed names', () {
@@ -73,19 +99,22 @@ void main() {
     expect(prefs.getString('user_role'), isNull);
   });
 
-  test('logoutUser resets session data so stale user state is not kept', () async {
-    SharedPreferences.setMockInitialValues({});
+  test(
+    'logoutUser resets session data so stale user state is not kept',
+    () async {
+      SharedPreferences.setMockInitialValues({});
 
-    final state = AppStateProvider();
-    await state.setUserCredits(12);
-    await state.toggleFavoriteTutorial('t1');
-    await state.toggleCompletedTutorial('t2');
+      final state = AppStateProvider();
+      await state.setUserCredits(12);
+      await state.toggleFavoriteTutorial('t1');
+      await state.toggleCompletedTutorial('t2');
 
-    await state.logoutUser();
+      await state.logoutUser();
 
-    expect(state.credits, 5);
-    expect(state.userPhoto, isEmpty);
-    expect(state.favoriteTutorialIds, isEmpty);
-    expect(state.completedTutorialIds, isEmpty);
-  });
+      expect(state.credits, 5);
+      expect(state.userPhoto, isEmpty);
+      expect(state.favoriteTutorialIds, isEmpty);
+      expect(state.completedTutorialIds, isEmpty);
+    },
+  );
 }

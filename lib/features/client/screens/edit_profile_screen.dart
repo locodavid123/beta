@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/image_input_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -14,7 +14,7 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameController = TextEditingController();
-  File? _imageFile;
+  XFile? _imageFile;
   String _existingPhoto = '';
 
   @override
@@ -32,11 +32,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
     final state = Provider.of<AppStateProvider>(context, listen: false);
     try {
-      final pickedFile = await picker.pickImage(
-        source: source,
+      final pickedFile = await pickImage(
+        context,
+        source,
         maxWidth: 512,
         maxHeight: 512,
         imageQuality: 85,
@@ -45,13 +45,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (pickedFile == null) return;
 
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _imageFile = pickedFile;
       });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(state.translate('edit_profile_error_pick', params: {'error': e.toString()})),
+            content: Text(
+              state.translate(
+                'edit_profile_error_pick',
+                params: {'error': e.toString()},
+              ),
+            ),
             backgroundColor: AppTheme.redAccent,
           ),
         );
@@ -83,10 +88,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 4),
               Text(
                 state.translate('edit_profile_sub_photo'),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 20),
               Row(
@@ -105,13 +107,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.camera_alt_outlined, color: AppTheme.primaryColor, size: 28),
+                            const Icon(
+                              Icons.camera_alt_outlined,
+                              color: AppTheme.primaryColor,
+                              size: 28,
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               state.translate('edit_profile_camera'),
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor),
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
                             ),
                           ],
                         ),
@@ -133,13 +140,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.photo_library_outlined, color: AppTheme.primaryColor, size: 28),
+                            const Icon(
+                              Icons.photo_library_outlined,
+                              color: AppTheme.primaryColor,
+                              size: 28,
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               state.translate('edit_profile_gallery'),
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor),
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
                             ),
                           ],
                         ),
@@ -161,12 +173,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final state = Provider.of<AppStateProvider>(context, listen: false);
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.translate('edit_profile_validation_name'))),
+        SnackBar(
+          content: Text(state.translate('edit_profile_validation_name')),
+        ),
       );
       return;
     }
 
-    final finalPhotoPath = _imageFile != null ? _imageFile!.path : _existingPhoto;
+    final finalPhotoPath = _imageFile != null
+        ? await persistPickedImage(_imageFile!)
+        : _existingPhoto;
 
     try {
       await state.updateUserProfile(name: name, photoPath: finalPhotoPath);
@@ -183,7 +199,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(state.translate('edit_profile_error', params: {'error': e.toString()})),
+            content: Text(
+              state.translate(
+                'edit_profile_error',
+                params: {'error': e.toString()},
+              ),
+            ),
             backgroundColor: AppTheme.redAccent,
           ),
         );
@@ -236,7 +257,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       height: 110,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
+                        color: isDark
+                            ? AppTheme.cardDark
+                            : const Color(0xFFF4F0FA),
                         border: Border.all(
                           color: AppTheme.primaryColor.withValues(alpha: 0.3),
                           width: 3,
@@ -244,29 +267,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                       child: ClipOval(
                         child: _imageFile != null
-                            ? Image.file(
-                                _imageFile!,
+                            ? PickedImage(
+                                image: _imageFile!,
                                 width: 110,
                                 height: 110,
                                 fit: BoxFit.cover,
                               )
                             : _existingPhoto.isNotEmpty
-                                ? (_existingPhoto.startsWith('assets/')
-                                    ? Image.asset(
-                                        _existingPhoto,
-                                        width: 110,
-                                        height: 110,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Image.file(
-                                        File(_existingPhoto),
-                                        width: 110,
-                                        height: 110,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) =>
-                                            _buildInitials(state.userName),
-                                      ))
-                                : _buildInitials(state.userName),
+                            ? (_existingPhoto.startsWith('assets/')
+                                  ? Image.asset(
+                                      _existingPhoto,
+                                      width: 110,
+                                      height: 110,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : AppImage(
+                                      path: _existingPhoto,
+                                      width: 110,
+                                      height: 110,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              _buildInitials(state.userName),
+                                    ))
+                            : _buildInitials(state.userName),
                       ),
                     ),
                   ),
@@ -359,10 +383,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-      ),
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
     );
   }
 
@@ -379,7 +400,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
         filled: true,
         fillColor: isDark ? const Color(0xFF261D3B) : const Color(0xFFF6F5FB),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,

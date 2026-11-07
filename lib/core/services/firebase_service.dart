@@ -9,6 +9,7 @@ import '../models/style.dart';
 import '../models/creation.dart';
 import '../models/tutorial.dart';
 import '../models/report.dart';
+import '../../firebase_options.dart';
 
 class FirebaseService {
   static final FirebaseService _instance = FirebaseService._internal();
@@ -24,7 +25,7 @@ class FirebaseService {
   final List<Creation> _mockCreations = [];
   final List<Tutorial> _mockTutorials = [];
   final List<ModerationReport> _mockReports = [];
-  
+
   // Active user details
   String? _currentUserEmail;
   String? _currentUserName;
@@ -41,12 +42,14 @@ class FirebaseService {
 
     try {
       // Try to initialize Firebase
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: kIsWeb ? DefaultFirebaseOptions.web : null,
+      );
       _isFirebaseInitialized = true;
       if (kDebugMode) {
         print("Firebase initialized successfully.");
       }
-      
+
       // Load initial dynamic styles in Firestore if empty
       await _seedStylesInFirestore();
       // Load initial tutorials in Firestore if empty and ensure YouTube URLs are up-to-date
@@ -54,7 +57,9 @@ class FirebaseService {
     } catch (e) {
       _isFirebaseInitialized = false;
       if (kDebugMode) {
-        print("Firebase initialization failed/skipped: $e. Falling back to local storage.");
+        print(
+          "Firebase initialization failed/skipped: $e. Falling back to local storage.",
+        );
       }
     }
   }
@@ -64,9 +69,16 @@ class FirebaseService {
     if (!_isFirebaseInitialized) return;
     try {
       final stylesColl = FirebaseFirestore.instance.collection('styles');
-      
+
       // Clean up the deprecated/deleted styles from Firestore database
-      final idsToRemove = {'realeza', 'cosmico', 'cyberpunk', 'acuarela', 'steampunk', 'kawaii'};
+      final idsToRemove = {
+        'realeza',
+        'cosmico',
+        'cyberpunk',
+        'acuarela',
+        'steampunk',
+        'kawaii',
+      };
       for (var id in idsToRemove) {
         await stylesColl.doc(id).delete();
       }
@@ -78,7 +90,10 @@ class FirebaseService {
           await stylesColl.doc(s.id).set(s.toMap());
         } else {
           final data = doc.data();
-          if (data != null && (data['tutorialId'] != s.tutorialId || data['videoUrl'] != s.videoUrl || data['name'] != s.name)) {
+          if (data != null &&
+              (data['tutorialId'] != s.tutorialId ||
+                  data['videoUrl'] != s.videoUrl ||
+                  data['name'] != s.name)) {
             await stylesColl.doc(s.id).update({
               'tutorialId': s.tutorialId,
               'videoUrl': s.videoUrl,
@@ -134,7 +149,7 @@ class FirebaseService {
   // Load local data from SharedPreferences if Firebase is disabled
   Future<void> _loadLocalMockData() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Auth status
     _currentUserEmail = prefs.getString('user_email');
     _currentUserName = prefs.getString('user_name') ?? 'Valentina López';
@@ -149,7 +164,14 @@ class FirebaseService {
         _mockStyles.add(ArtStyle.fromMap(jsonDecode(s)));
       }
       // Explicitly remove the deprecated/deleted default concept styles
-      final idsToRemove = {'realeza', 'cosmico', 'cyberpunk', 'acuarela', 'steampunk', 'kawaii'};
+      final idsToRemove = {
+        'realeza',
+        'cosmico',
+        'cyberpunk',
+        'acuarela',
+        'steampunk',
+        'kawaii',
+      };
       _mockStyles.removeWhere((s) => idsToRemove.contains(s.id));
 
       // Add and update official styles with tutorial links
@@ -162,7 +184,13 @@ class FirebaseService {
           _mockStyles[idx] = def;
         }
       }
-      final order = ['corte_cachorro', 'corte_oso', 'corte_topknot', 'corte_leon', 'corte_exhibicion'];
+      final order = [
+        'corte_cachorro',
+        'corte_oso',
+        'corte_topknot',
+        'corte_leon',
+        'corte_exhibicion',
+      ];
       _mockStyles.sort((a, b) {
         int idxA = order.indexOf(a.id);
         int idxB = order.indexOf(b.id);
@@ -236,7 +264,8 @@ class FirebaseService {
           originalImagePath: 'assets/images/luna_shih_tzu.png',
           date: DateTime.now().subtract(const Duration(hours: 3)),
           likes: 24,
-          description: 'Luna luciendo un hermoso y práctico corte cachorro de 2 pulgadas, muy cómoda y fresca.',
+          description:
+              'Luna luciendo un hermoso y práctico corte cachorro de 2 pulgadas, muy cómoda y fresca.',
         ),
         Creation(
           id: 'c2',
@@ -248,7 +277,8 @@ class FirebaseService {
           originalImagePath: 'assets/images/max_shih_tzu.png',
           date: DateTime.now().subtract(const Duration(days: 1)),
           likes: 11,
-          description: 'Max con su corte oso de peluche, su cabeza se ve muy redonda y tierna.',
+          description:
+              'Max con su corte oso de peluche, su cabeza se ve muy redonda y tierna.',
         ),
         Creation(
           id: 'c3',
@@ -260,7 +290,8 @@ class FirebaseService {
           originalImagePath: 'assets/images/luna_shih_tzu.png',
           date: DateTime.now().subtract(const Duration(days: 5)),
           likes: 8,
-          description: 'Luna con un majestuoso corte de león, una melena abundante y cuerpo recortado.',
+          description:
+              'Luna con un majestuoso corte de león, una melena abundante y cuerpo recortado.',
         ),
         Creation(
           id: 'c4',
@@ -272,7 +303,8 @@ class FirebaseService {
           originalImagePath: 'assets/images/luna_shih_tzu.png',
           date: DateTime.now().subtract(const Duration(days: 8)),
           likes: 17,
-          description: 'Luna con su clásico top knot recogido con un lazo rojo elegante.',
+          description:
+              'Luna con su clásico top knot recogido con un lazo rojo elegante.',
         ),
       ]);
       await _saveMockCreations();
@@ -291,7 +323,8 @@ class FirebaseService {
       for (var def in defs) {
         final idx = _mockTutorials.indexWhere((t) => t.id == def.id);
         if (idx != -1) {
-          if (def.videoUrl.isNotEmpty && _mockTutorials[idx].videoUrl != def.videoUrl) {
+          if (def.videoUrl.isNotEmpty &&
+              _mockTutorials[idx].videoUrl != def.videoUrl) {
             _mockTutorials[idx] = def;
             updated = true;
           }
@@ -360,10 +393,12 @@ class FirebaseService {
         name: 'Corte Cachorro (Puppy Cut)',
         category: 'Clásico',
         imagePath: 'assets/images/corte_cachorro.png',
-        description: 'Un corte práctico y uniforme de 1 a 2 pulgadas en todo el cuerpo, ideal para climas cálidos y fácil mantenimiento.',
+        description:
+            'Un corte práctico y uniforme de 1 a 2 pulgadas en todo el cuerpo, ideal para climas cálidos y fácil mantenimiento.',
         isHot: true,
         status: 'activo',
-        promptTemplate: 'A professional portrait of a [breed] dog with a fresh puppy cut, showcasing short, even coat all over the body, neat round head, looking happy, studio lighting.',
+        promptTemplate:
+            'A professional portrait of a [breed] dog with a fresh puppy cut, showcasing short, even coat all over the body, neat round head, looking happy, studio lighting.',
         coatType: 'Pelo Corto',
         difficulty: 'Fácil',
         uses: 340,
@@ -375,10 +410,12 @@ class FirebaseService {
         name: 'Corte Oso de Peluche (Teddy Bear)',
         category: 'Cute',
         imagePath: 'assets/images/corte_oso.png',
-        description: 'Cuerpo recortado a longitud media y cabeza redondeada y esponjosa, dándole la apariencia tierna de un osito.',
+        description:
+            'Cuerpo recortado a longitud media y cabeza redondeada y esponjosa, dándole la apariencia tierna de un osito.',
         isHot: true,
         status: 'activo',
-        promptTemplate: 'A beautiful [breed] dog styled in a teddy bear cut, featuring a rounded fluffy head shape, neatly trimmed body, cute expressive eyes, soft pastel background.',
+        promptTemplate:
+            'A beautiful [breed] dog styled in a teddy bear cut, featuring a rounded fluffy head shape, neatly trimmed body, cute expressive eyes, soft pastel background.',
         coatType: 'Ambos',
         difficulty: 'Medio',
         uses: 289,
@@ -390,10 +427,12 @@ class FirebaseService {
         name: 'Corte Moño Superior (Top Knot)',
         category: 'Cute',
         imagePath: 'assets/images/corte_topknot.png',
-        description: 'El pelo de la cabeza se recoge elegantemente en una coleta o moño, sujetado con un lazo, mientras el cuerpo puede ir corto o largo.',
+        description:
+            'El pelo de la cabeza se recoge elegantemente en una coleta o moño, sujetado con un lazo, mientras el cuerpo puede ir corto o largo.',
         isHot: false,
         status: 'activo',
-        promptTemplate: 'A cute [breed] dog with head hair gathered in a neat top knot ponytail adorned with a colorful ribbon, bright happy expression, high quality grooming.',
+        promptTemplate:
+            'A cute [breed] dog with head hair gathered in a neat top knot ponytail adorned with a colorful ribbon, bright happy expression, high quality grooming.',
         coatType: 'Pelo Largo',
         difficulty: 'Medio',
         uses: 180,
@@ -405,10 +444,12 @@ class FirebaseService {
         name: 'Corte de León (Lion Cut)',
         category: 'Fantasía',
         imagePath: 'assets/images/corte_leon.png',
-        description: 'Cuerpo y patas recortados muy cortos, dejando una melena abundante y majestuosa alrededor del cuello y la cabeza.',
+        description:
+            'Cuerpo y patas recortados muy cortos, dejando una melena abundante y majestuosa alrededor del cuello y la cabeza.',
         isHot: false,
         status: 'activo',
-        promptTemplate: 'A majestic [breed] dog groomed with a lion cut, showing a neatly shaved body and limbs with a full, fluffy lion-like mane around its head and neck, looking proud.',
+        promptTemplate:
+            'A majestic [breed] dog groomed with a lion cut, showing a neatly shaved body and limbs with a full, fluffy lion-like mane around its head and neck, looking proud.',
         coatType: 'Pelo Largo',
         difficulty: 'Difícil',
         uses: 120,
@@ -420,10 +461,12 @@ class FirebaseService {
         name: 'Manto Largo Tradicional de Exhibición',
         category: 'Clásico',
         imagePath: 'assets/images/corte_exhibicion.png',
-        description: 'El pelaje largo y sedoso tradicional que llega hasta el suelo, requiriendo cepillado diario y cuidado premium.',
+        description:
+            'El pelaje largo y sedoso tradicional que llega hasta el suelo, requiriendo cepillado diario y cuidado premium.',
         isHot: false,
         status: 'activo',
-        promptTemplate: 'A show-quality [breed] dog with a gorgeous, long flowing silky coat reaching the ground, head hair gathered in a classic topknot with a red ribbon bow.',
+        promptTemplate:
+            'A show-quality [breed] dog with a gorgeous, long flowing silky coat reaching the ground, head hair gathered in a classic topknot with a red ribbon bow.',
         coatType: 'Pelo Largo',
         difficulty: 'Difícil',
         uses: 95,
@@ -685,17 +728,23 @@ class FirebaseService {
         );
         if (cred.user != null) {
           _currentUserEmail = cred.user!.email ?? cleanEmail;
-          _currentUserName = cred.user!.displayName ?? cleanEmail.split('@').first;
-          _currentUserRole = (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
+          _currentUserName =
+              cred.user!.displayName ?? cleanEmail.split('@').first;
+          _currentUserRole =
+              (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
               ? 'root'
-              : (cleanEmail == 'admin@email.com' || cleanEmail == 'admin@myapp.com')
-                  ? 'admin'
-                  : 'client';
+              : (cleanEmail == 'admin@email.com' ||
+                    cleanEmail == 'admin@myapp.com')
+              ? 'admin'
+              : 'client';
           _currentUserPhoto = '';
 
           // Read user profile from Firestore safely inside a try-catch so permission errors never abort login
           try {
-            final doc = await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).get();
+            final doc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(cred.user!.uid)
+                .get();
             if (doc.exists && doc.data() != null) {
               final data = doc.data()!;
               _currentUserName = data['name'] ?? _currentUserName;
@@ -707,7 +756,14 @@ class FirebaseService {
           } catch (_) {}
 
           // Also save to local cache
-          await _saveUserToLocalMock(_currentUserName!, cleanEmail, password, _currentUserRole, 5, cred.user?.uid);
+          await _saveUserToLocalMock(
+            _currentUserName!,
+            cleanEmail,
+            password,
+            _currentUserRole,
+            5,
+            cred.user?.uid,
+          );
 
           await prefs.setString('user_email', cleanEmail);
           await prefs.setString('user_name', _currentUserName!);
@@ -730,7 +786,11 @@ class FirebaseService {
     }
   }
 
-  Future<UserCredential?> _signInLocal(String email, String password, SharedPreferences prefs) async {
+  Future<UserCredential?> _signInLocal(
+    String email,
+    String password,
+    SharedPreferences prefs,
+  ) async {
     final usersJson = prefs.getString('mock_users');
     List<dynamic> users = [];
     if (usersJson != null) {
@@ -741,16 +801,56 @@ class FirebaseService {
 
     // Always guarantee built-in accounts are present and up to date
     final defaultUsers = [
-      {"email": "admin@email.com", "password": "password123", "name": "Admin General", "role": "admin", "credits": 999},
-      {"email": "root@email.com", "password": "password123", "name": "Root Admin", "role": "root", "credits": 999},
-      {"email": "admin@myapp.com", "password": "password123", "name": "Admin General", "role": "admin", "credits": 999},
-      {"email": "root@myapp.com", "password": "password123", "name": "Root Admin", "role": "root", "credits": 999},
-      {"email": "cliente_prueba@email.com", "password": "password123", "name": "Valentina López", "role": "client", "credits": 5},
-      {"email": "valentina@email.com", "password": "password123", "name": "Valentina López", "role": "client", "credits": 5},
+      {
+        "email": "admin@email.com",
+        "password": "password123",
+        "name": "Admin General",
+        "role": "admin",
+        "credits": 999,
+      },
+      {
+        "email": "root@email.com",
+        "password": "password123",
+        "name": "Root Admin",
+        "role": "root",
+        "credits": 999,
+      },
+      {
+        "email": "admin@myapp.com",
+        "password": "password123",
+        "name": "Admin General",
+        "role": "admin",
+        "credits": 999,
+      },
+      {
+        "email": "root@myapp.com",
+        "password": "password123",
+        "name": "Root Admin",
+        "role": "root",
+        "credits": 999,
+      },
+      {
+        "email": "cliente_prueba@email.com",
+        "password": "password123",
+        "name": "Valentina López",
+        "role": "client",
+        "credits": 5,
+      },
+      {
+        "email": "valentina@email.com",
+        "password": "password123",
+        "name": "Valentina López",
+        "role": "client",
+        "credits": 5,
+      },
     ];
 
     for (var def in defaultUsers) {
-      final existingIndex = users.indexWhere((u) => u['email'].toString().toLowerCase() == def['email'].toString().toLowerCase());
+      final existingIndex = users.indexWhere(
+        (u) =>
+            u['email'].toString().toLowerCase() ==
+            def['email'].toString().toLowerCase(),
+      );
       if (existingIndex == -1) {
         users.add(def);
       } else {
@@ -761,7 +861,9 @@ class FirebaseService {
     await prefs.setString('mock_users', jsonEncode(users));
 
     final normalizedEmail = email.trim().toLowerCase();
-    final userIndex = users.indexWhere((u) => u['email'].toString().toLowerCase() == normalizedEmail);
+    final userIndex = users.indexWhere(
+      (u) => u['email'].toString().toLowerCase() == normalizedEmail,
+    );
     if (userIndex == -1) {
       throw Exception("El usuario no está registrado en la base de datos.");
     }
@@ -784,7 +886,11 @@ class FirebaseService {
     return null;
   }
 
-  Future<UserCredential?> signUp(String email, String password, String name) async {
+  Future<UserCredential?> signUp(
+    String email,
+    String password,
+    String name,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final cleanEmail = email.trim().toLowerCase();
     final cleanName = name.trim();
@@ -800,11 +906,13 @@ class FirebaseService {
           await cred.user?.updateDisplayName(cleanName);
         } catch (_) {}
 
-        _currentUserRole = (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
+        _currentUserRole =
+            (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
             ? 'root'
-            : (cleanEmail == 'admin@email.com' || cleanEmail == 'admin@myapp.com')
-                ? 'admin'
-                : 'client';
+            : (cleanEmail == 'admin@email.com' ||
+                  cleanEmail == 'admin@myapp.com')
+            ? 'admin'
+            : 'client';
 
         final userData = {
           'uid': cred.user?.uid,
@@ -825,17 +933,28 @@ class FirebaseService {
                 .doc(cred.user!.uid)
                 .set(userData, SetOptions(merge: true));
             if (kDebugMode) {
-              print("User successfully registered in Firestore: $cleanEmail (${cred.user!.uid})");
+              print(
+                "User successfully registered in Firestore: $cleanEmail (${cred.user!.uid})",
+              );
             }
           }
         } catch (firestoreError) {
           if (kDebugMode) {
-            print("Warning: could not write user to Firestore: $firestoreError");
+            print(
+              "Warning: could not write user to Firestore: $firestoreError",
+            );
           }
         }
 
         // Cache locally in mock_users as well
-        await _saveUserToLocalMock(cleanName, cleanEmail, password, _currentUserRole, 5, cred.user?.uid);
+        await _saveUserToLocalMock(
+          cleanName,
+          cleanEmail,
+          password,
+          _currentUserRole,
+          5,
+          cred.user?.uid,
+        );
 
         _currentUserEmail = cleanEmail;
         _currentUserName = cleanName;
@@ -850,15 +969,17 @@ class FirebaseService {
         if (e.code == 'email-already-in-use') {
           // If already registered, attempt direct login with this password!
           try {
-            final loginCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-              email: cleanEmail,
-              password: password,
-            );
+            final loginCred = await FirebaseAuth.instance
+                .signInWithEmailAndPassword(
+                  email: cleanEmail,
+                  password: password,
+                );
             if (loginCred.user != null) {
               _currentUserEmail = cleanEmail;
               _currentUserName = cleanName.isNotEmpty
                   ? cleanName
-                  : (loginCred.user!.displayName ?? cleanEmail.split('@').first);
+                  : (loginCred.user!.displayName ??
+                        cleanEmail.split('@').first);
               _currentUserRole = 'client';
               _currentUserPhoto = '';
               await prefs.setString('user_email', cleanEmail);
@@ -868,9 +989,13 @@ class FirebaseService {
               return loginCred;
             }
           } catch (_) {}
-          throw Exception("Este correo electrónico ya está registrado. Por favor inicia sesión con tu contraseña.");
+          throw Exception(
+            "Este correo electrónico ya está registrado. Por favor inicia sesión con tu contraseña.",
+          );
         } else if (e.code == 'weak-password') {
-          throw Exception("La contraseña es muy débil. Debe tener al menos 6 caracteres.");
+          throw Exception(
+            "La contraseña es muy débil. Debe tener al menos 6 caracteres.",
+          );
         } else if (e.code == 'invalid-email') {
           throw Exception("El correo electrónico no es válido.");
         } else if (e.code == 'operation-not-allowed') {
@@ -903,7 +1028,9 @@ class FirebaseService {
       } catch (_) {}
     }
     final normalized = email.trim().toLowerCase();
-    final idx = users.indexWhere((u) => (u['email'] ?? '').toString().toLowerCase() == normalized);
+    final idx = users.indexWhere(
+      (u) => (u['email'] ?? '').toString().toLowerCase() == normalized,
+    );
     final userMap = {
       "uid": uid ?? 'local_${normalized.hashCode}',
       "email": normalized,
@@ -921,7 +1048,12 @@ class FirebaseService {
     await prefs.setString('mock_users', jsonEncode(users));
   }
 
-  Future<UserCredential?> _signUpLocal(String email, String password, String name, SharedPreferences prefs) async {
+  Future<UserCredential?> _signUpLocal(
+    String email,
+    String password,
+    String name,
+    SharedPreferences prefs,
+  ) async {
     final cleanEmail = email.trim().toLowerCase();
     final cleanName = name.trim();
 
@@ -934,14 +1066,19 @@ class FirebaseService {
         } catch (_) {}
       }
 
-      final existingIndex = users.indexWhere((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail);
+      final existingIndex = users.indexWhere(
+        (u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail,
+      );
       if (existingIndex != -1) {
         final existing = users[existingIndex];
         // If password matches or was empty/default, sign the user in smoothly!
-        if (existing['password'] == password || (existing['password'] ?? '').toString().isEmpty) {
+        if (existing['password'] == password ||
+            (existing['password'] ?? '').toString().isEmpty) {
           _currentUserRole = existing['role'] ?? 'client';
           _currentUserEmail = cleanEmail;
-          _currentUserName = (cleanName.isNotEmpty ? cleanName : existing['name'] ?? 'Usuario').toString();
+          _currentUserName =
+              (cleanName.isNotEmpty ? cleanName : existing['name'] ?? 'Usuario')
+                  .toString();
           _currentUserPhoto = existing['photoUrl'] ?? '';
           existing['name'] = _currentUserName;
           existing['password'] = password;
@@ -953,15 +1090,18 @@ class FirebaseService {
           await prefs.setInt('user_credits', existing['credits'] ?? 5);
           return null;
         } else {
-          throw Exception("Este correo ya está registrado en el sistema. Por favor inicia sesión con tu contraseña.");
+          throw Exception(
+            "Este correo ya está registrado en el sistema. Por favor inicia sesión con tu contraseña.",
+          );
         }
       }
 
-      _currentUserRole = (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
+      _currentUserRole =
+          (cleanEmail == 'root@email.com' || cleanEmail == 'root@myapp.com')
           ? 'root'
           : (cleanEmail == 'admin@email.com' || cleanEmail == 'admin@myapp.com')
-              ? 'admin'
-              : 'client';
+          ? 'admin'
+          : 'client';
 
       users.add({
         "uid": 'local_${cleanEmail.hashCode}',
@@ -985,7 +1125,9 @@ class FirebaseService {
       await prefs.setInt('user_credits', 5);
       return null;
     } else {
-      throw Exception("Por favor introduce un correo válido y una contraseña de al menos 6 caracteres.");
+      throw Exception(
+        "Por favor introduce un correo válido y una contraseña de al menos 6 caracteres.",
+      );
     }
   }
 
@@ -998,7 +1140,9 @@ class FirebaseService {
     // 1. Fetch from Firestore if initialized
     if (_isFirebaseInitialized) {
       try {
-        final snapshot = await FirebaseFirestore.instance.collection('users').get();
+        final snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .get();
         for (var doc in snapshot.docs) {
           final data = doc.data();
           final email = (data['email'] ?? '').toString().trim().toLowerCase();
@@ -1047,15 +1191,43 @@ class FirebaseService {
         .toSet();
 
     // Remove any deleted emails from result
-    result.removeWhere((u) => deletedEmails.contains((u['email'] ?? '').toString().toLowerCase()));
+    result.removeWhere(
+      (u) =>
+          deletedEmails.contains((u['email'] ?? '').toString().toLowerCase()),
+    );
 
     // 3. Ensure official root and admin accounts are present (if not deleted)
     final defaultUsers = [
-      {'name': 'Root Admin', 'email': 'root@email.com', 'role': 'root', 'credits': 999},
-      {'name': 'Root Admin', 'email': 'root@myapp.com', 'role': 'root', 'credits': 999},
-      {'name': 'Admin General', 'email': 'admin@email.com', 'role': 'admin', 'credits': 999},
-      {'name': 'Admin General', 'email': 'admin@myapp.com', 'role': 'admin', 'credits': 999},
-      {'name': 'Valentina López', 'email': 'cliente_prueba@email.com', 'role': 'client', 'credits': 5},
+      {
+        'name': 'Root Admin',
+        'email': 'root@email.com',
+        'role': 'root',
+        'credits': 999,
+      },
+      {
+        'name': 'Root Admin',
+        'email': 'root@myapp.com',
+        'role': 'root',
+        'credits': 999,
+      },
+      {
+        'name': 'Admin General',
+        'email': 'admin@email.com',
+        'role': 'admin',
+        'credits': 999,
+      },
+      {
+        'name': 'Admin General',
+        'email': 'admin@myapp.com',
+        'role': 'admin',
+        'credits': 999,
+      },
+      {
+        'name': 'Valentina López',
+        'email': 'cliente_prueba@email.com',
+        'role': 'client',
+        'credits': 5,
+      },
     ];
 
     for (var def in defaultUsers) {
@@ -1069,7 +1241,13 @@ class FirebaseService {
     return result;
   }
 
-  Future<void> updateUserInDatabase(String email, String newRole, int newCredits, [String? newName, String? newPassword]) async {
+  Future<void> updateUserInDatabase(
+    String email,
+    String newRole,
+    int newCredits, [
+    String? newName,
+    String? newPassword,
+  ]) async {
     final cleanEmail = email.trim().toLowerCase();
     final prefs = await SharedPreferences.getInstance();
 
@@ -1104,7 +1282,9 @@ class FirebaseService {
       } catch (_) {}
     }
 
-    final idx = users.indexWhere((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail);
+    final idx = users.indexWhere(
+      (u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail,
+    );
     if (idx != -1) {
       users[idx]['role'] = newRole;
       users[idx]['credits'] = newCredits;
@@ -1121,7 +1301,9 @@ class FirebaseService {
         'email': cleanEmail,
         'role': newRole,
         'credits': newCredits,
-        'password': (newPassword != null && newPassword.isNotEmpty) ? newPassword : 'password123',
+        'password': (newPassword != null && newPassword.isNotEmpty)
+            ? newPassword
+            : 'password123',
         'photoUrl': '',
       });
     }
@@ -1139,7 +1321,13 @@ class FirebaseService {
     }
   }
 
-  Future<void> addUserToDatabase(String name, String email, String role, int credits, [String password = 'password123']) async {
+  Future<void> addUserToDatabase(
+    String name,
+    String email,
+    String role,
+    int credits, [
+    String password = 'password123',
+  ]) async {
     final cleanEmail = email.trim().toLowerCase();
     final cleanName = name.trim();
     final prefs = await SharedPreferences.getInstance();
@@ -1196,7 +1384,9 @@ class FirebaseService {
     if (usersJson != null) {
       try {
         List<dynamic> users = jsonDecode(usersJson);
-        users.removeWhere((u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail);
+        users.removeWhere(
+          (u) => (u['email'] ?? '').toString().toLowerCase() == cleanEmail,
+        );
         await prefs.setString('mock_users', jsonEncode(users));
       } catch (_) {}
     }
@@ -1266,7 +1456,11 @@ class FirebaseService {
     }
 
     // 2. Merge local pets for this user
-    final localForUser = (email.isEmpty || email == 'invitado@correo.com' || _currentUserRole == 'root' || _currentUserRole == 'admin')
+    final localForUser =
+        (email.isEmpty ||
+            email == 'invitado@correo.com' ||
+            _currentUserRole == 'root' ||
+            _currentUserRole == 'admin')
         ? _mockPets
         : _mockPets.where((p) => p.userEmail.toLowerCase() == email).toList();
 
@@ -1278,7 +1472,11 @@ class FirebaseService {
     }
 
     // 3. Fallback to default demo pets if still completely empty (for guest, admin, root, or demo user)
-    if (result.isEmpty && (email.isEmpty || email == 'invitado@correo.com' || email == 'cliente_prueba@email.com' || _currentUserRole != 'client')) {
+    if (result.isEmpty &&
+        (email.isEmpty ||
+            email == 'invitado@correo.com' ||
+            email == 'cliente_prueba@email.com' ||
+            _currentUserRole != 'client')) {
       return List<Pet>.from(_mockPets);
     }
 
@@ -1298,7 +1496,10 @@ class FirebaseService {
     // 2. Try Firestore
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('pets').doc(pet.id).set(pet.toMap());
+        await FirebaseFirestore.instance
+            .collection('pets')
+            .doc(pet.id)
+            .set(pet.toMap());
       } catch (e) {
         if (kDebugMode) print("Error adding pet to Firestore: $e");
       }
@@ -1316,7 +1517,10 @@ class FirebaseService {
     // 2. Try Firestore
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('pets').doc(pet.id).update(pet.toMap());
+        await FirebaseFirestore.instance
+            .collection('pets')
+            .doc(pet.id)
+            .update(pet.toMap());
       } catch (e) {
         if (kDebugMode) print("Error updating pet in Firestore: $e");
       }
@@ -1343,15 +1547,32 @@ class FirebaseService {
     if (_mockStyles.isEmpty) {
       _mockStyles.addAll(_getDefaultStyles());
     }
-    final order = ['corte_cachorro', 'corte_oso', 'corte_topknot', 'corte_leon', 'corte_exhibicion'];
+    final order = [
+      'corte_cachorro',
+      'corte_oso',
+      'corte_topknot',
+      'corte_leon',
+      'corte_exhibicion',
+    ];
     if (_isFirebaseInitialized) {
       try {
-        final snapshot = await FirebaseFirestore.instance.collection('styles').get();
+        final snapshot = await FirebaseFirestore.instance
+            .collection('styles')
+            .get();
         if (snapshot.docs.isEmpty) {
           return List<ArtStyle>.from(_mockStyles);
         }
-        final list = snapshot.docs.map((doc) => ArtStyle.fromMap(doc.data())).toList();
-        final idsToRemove = {'realeza', 'cosmico', 'cyberpunk', 'acuarela', 'steampunk', 'kawaii'};
+        final list = snapshot.docs
+            .map((doc) => ArtStyle.fromMap(doc.data()))
+            .toList();
+        final idsToRemove = {
+          'realeza',
+          'cosmico',
+          'cyberpunk',
+          'acuarela',
+          'steampunk',
+          'kawaii',
+        };
         list.removeWhere((s) => idsToRemove.contains(s.id));
 
         // Merge official tutorial links and sort
@@ -1360,7 +1581,8 @@ class FirebaseService {
           final idx = list.indexWhere((s) => s.id == def.id);
           if (idx == -1) {
             list.add(def);
-          } else if (list[idx].tutorialId.isEmpty || list[idx].videoUrl.isEmpty) {
+          } else if (list[idx].tutorialId.isEmpty ||
+              list[idx].videoUrl.isEmpty) {
             list[idx] = def;
           }
         }
@@ -1384,7 +1606,10 @@ class FirebaseService {
   Future<void> addStyle(ArtStyle style) async {
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('styles').doc(style.id).set(style.toMap());
+        await FirebaseFirestore.instance
+            .collection('styles')
+            .doc(style.id)
+            .set(style.toMap());
       } catch (e) {
         if (kDebugMode) print("Error adding style: $e");
         _mockStyles.add(style);
@@ -1400,9 +1625,26 @@ class FirebaseService {
   Future<List<Creation>> getCreations() async {
     if (_isFirebaseInitialized) {
       try {
-        final snapshot = await FirebaseFirestore.instance.collection('creations').orderBy('date', descending: true).get();
-        final list = snapshot.docs.map((doc) => Creation.fromMap(doc.data())).toList();
-        return list.isNotEmpty ? list : List<Creation>.from(_mockCreations);
+        final snapshot = await FirebaseFirestore.instance
+            .collection('creations')
+            .orderBy('date', descending: true)
+            .get();
+        final list = snapshot.docs
+            .map((doc) => Creation.fromMap(doc.data()))
+            .toList();
+        final creationsById = {
+          for (final creation in list) creation.id: creation,
+        };
+        for (final creation in _mockCreations) {
+          if (creation.id.startsWith('creation_')) {
+            creationsById[creation.id] = creation;
+          }
+        }
+        final mergedCreations = creationsById.values.toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+        return mergedCreations.isNotEmpty
+            ? mergedCreations
+            : List<Creation>.from(_mockCreations);
       } catch (e) {
         if (kDebugMode) print("Error fetching creations: $e");
         return List<Creation>.from(_mockCreations);
@@ -1425,7 +1667,10 @@ class FirebaseService {
 
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('creations').doc(creation.id).set(creation.toMap());
+        await FirebaseFirestore.instance
+            .collection('creations')
+            .doc(creation.id)
+            .set(creation.toMap());
       } catch (e) {
         if (kDebugMode) print("Error adding creation to Firestore: $e");
       }
@@ -1441,15 +1686,19 @@ class FirebaseService {
 
     if (_isFirebaseInitialized) {
       try {
-        final snapshot = await FirebaseFirestore.instance.collection('tutorials').get();
+        final snapshot = await FirebaseFirestore.instance
+            .collection('tutorials')
+            .get();
         if (snapshot.docs.isEmpty) {
           // If Firestore is empty, start seeding and return populated local tutorials
           _seedTutorialsInFirestore();
           return List<Tutorial>.from(_mockTutorials);
         }
-        
-        final list = snapshot.docs.map((doc) => Tutorial.fromMap(doc.data())).toList();
-        
+
+        final list = snapshot.docs
+            .map((doc) => Tutorial.fromMap(doc.data()))
+            .toList();
+
         // Ensure that all official default tutorials (including their YouTube links)
         // are present and accurate, merging if any are missing or have outdated links
         final defs = _getDefaultTutorials();
@@ -1457,24 +1706,33 @@ class FirebaseService {
           final idx = list.indexWhere((t) => t.id == def.id);
           if (idx == -1) {
             list.add(def);
-          } else if (def.videoUrl.isNotEmpty && (list[idx].videoUrl.isEmpty || list[idx].videoUrl != def.videoUrl)) {
+          } else if (def.videoUrl.isNotEmpty &&
+              (list[idx].videoUrl.isEmpty ||
+                  list[idx].videoUrl != def.videoUrl)) {
             list[idx] = list[idx].copyWith(videoUrl: def.videoUrl);
           }
         }
         return list;
       } catch (e) {
         if (kDebugMode) print("Error fetching tutorials from Firestore: $e");
-        return List<Tutorial>.from(_mockTutorials.isNotEmpty ? _mockTutorials : _getDefaultTutorials());
+        return List<Tutorial>.from(
+          _mockTutorials.isNotEmpty ? _mockTutorials : _getDefaultTutorials(),
+        );
       }
     } else {
-      return List<Tutorial>.from(_mockTutorials.isNotEmpty ? _mockTutorials : _getDefaultTutorials());
+      return List<Tutorial>.from(
+        _mockTutorials.isNotEmpty ? _mockTutorials : _getDefaultTutorials(),
+      );
     }
   }
 
   Future<void> addTutorial(Tutorial tutorial) async {
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('tutorials').doc(tutorial.id).set(tutorial.toMap());
+        await FirebaseFirestore.instance
+            .collection('tutorials')
+            .doc(tutorial.id)
+            .set(tutorial.toMap());
       } catch (e) {
         _mockTutorials.add(tutorial);
         await _saveMockTutorials();
@@ -1488,7 +1746,10 @@ class FirebaseService {
   Future<void> updateTutorial(Tutorial tutorial) async {
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('tutorials').doc(tutorial.id).update(tutorial.toMap());
+        await FirebaseFirestore.instance
+            .collection('tutorials')
+            .doc(tutorial.id)
+            .update(tutorial.toMap());
       } catch (e) {
         final idx = _mockTutorials.indexWhere((t) => t.id == tutorial.id);
         if (idx != -1) {
@@ -1508,7 +1769,10 @@ class FirebaseService {
   Future<void> deleteTutorial(String id) async {
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('tutorials').doc(id).delete();
+        await FirebaseFirestore.instance
+            .collection('tutorials')
+            .doc(id)
+            .delete();
       } catch (e) {
         _mockTutorials.removeWhere((t) => t.id == id);
         await _saveMockTutorials();
@@ -1526,10 +1790,18 @@ class FirebaseService {
     }
     if (_isFirebaseInitialized) {
       try {
-        final snapshot = await FirebaseFirestore.instance.collection('reports').get();
-        if (snapshot.docs.isEmpty) return List<ModerationReport>.from(_mockReports);
-        final list = snapshot.docs.map((doc) => ModerationReport.fromMap(doc.data())).toList();
-        return list.isNotEmpty ? list : List<ModerationReport>.from(_mockReports);
+        final snapshot = await FirebaseFirestore.instance
+            .collection('reports')
+            .get();
+        if (snapshot.docs.isEmpty) {
+          return List<ModerationReport>.from(_mockReports);
+        }
+        final list = snapshot.docs
+            .map((doc) => ModerationReport.fromMap(doc.data()))
+            .toList();
+        return list.isNotEmpty
+            ? list
+            : List<ModerationReport>.from(_mockReports);
       } catch (e) {
         return List<ModerationReport>.from(_mockReports);
       }
@@ -1541,7 +1813,10 @@ class FirebaseService {
   Future<void> addReport(ModerationReport report) async {
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('reports').doc(report.id).set(report.toMap());
+        await FirebaseFirestore.instance
+            .collection('reports')
+            .doc(report.id)
+            .set(report.toMap());
       } catch (e) {
         _mockReports.add(report);
         await _saveMockReports();
@@ -1555,7 +1830,9 @@ class FirebaseService {
   Future<void> resolveReport(String id) async {
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('reports').doc(id).update({'isResolved': 1});
+        await FirebaseFirestore.instance.collection('reports').doc(id).update({
+          'isResolved': 1,
+        });
       } catch (e) {
         final idx = _mockReports.indexWhere((r) => r.id == id);
         if (idx != -1) {
@@ -1596,7 +1873,10 @@ class FirebaseService {
   Future<void> updateStyle(ArtStyle style) async {
     if (_isFirebaseInitialized) {
       try {
-        await FirebaseFirestore.instance.collection('styles').doc(style.id).update(style.toMap());
+        await FirebaseFirestore.instance
+            .collection('styles')
+            .doc(style.id)
+            .update(style.toMap());
       } catch (e) {
         final idx = _mockStyles.indexWhere((s) => s.id == style.id);
         if (idx != -1) {
@@ -1627,7 +1907,10 @@ class FirebaseService {
     }
   }
 
-  Future<void> updateProfile({required String name, required String photoPath}) async {
+  Future<void> updateProfile({
+    required String name,
+    required String photoPath,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     _currentUserName = name;
     _currentUserPhoto = photoPath;
@@ -1640,10 +1923,10 @@ class FirebaseService {
         try {
           await user.updateDisplayName(name);
           await user.updatePhotoURL(photoPath);
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-            'name': name,
-            'photoUrl': photoPath,
-          });
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'name': name, 'photoUrl': photoPath});
         } catch (e) {
           if (kDebugMode) print("Error updating Firebase profile: $e");
         }
@@ -1655,7 +1938,9 @@ class FirebaseService {
         try {
           List<dynamic> users = jsonDecode(usersJson);
           final normalizedEmail = currentUserEmail?.trim().toLowerCase();
-          final idx = users.indexWhere((u) => u['email'].toString().toLowerCase() == normalizedEmail);
+          final idx = users.indexWhere(
+            (u) => u['email'].toString().toLowerCase() == normalizedEmail,
+          );
           if (idx != -1) {
             users[idx]['name'] = name;
             users[idx]['photoUrl'] = photoPath;
@@ -1668,7 +1953,10 @@ class FirebaseService {
     }
   }
 
-  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
     if (_isFirebaseInitialized) {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && user.email != null) {
@@ -1691,7 +1979,9 @@ class FirebaseService {
       if (usersJson != null) {
         List<dynamic> users = jsonDecode(usersJson);
         final normalizedEmail = currentUserEmail?.trim().toLowerCase();
-        final idx = users.indexWhere((u) => u['email'].toString().toLowerCase() == normalizedEmail);
+        final idx = users.indexWhere(
+          (u) => u['email'].toString().toLowerCase() == normalizedEmail,
+        );
         if (idx != -1) {
           final storedPassword = users[idx]['password'];
           if (storedPassword != currentPassword) {

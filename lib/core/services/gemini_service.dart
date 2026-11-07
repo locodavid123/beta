@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/coat_diagnosis.dart';
@@ -9,6 +9,7 @@ class GeminiResult {
   final String breed;
   final String message;
   final bool isServiceError;
+  bool get isVerifiedShihTzu => isShihTzu && !isServiceError;
 
   GeminiResult({
     required this.isShihTzu,
@@ -18,7 +19,178 @@ class GeminiResult {
   });
 }
 
+class GeneratedImageResult {
+  final Uint8List bytes;
+  final String mimeType;
+
+  const GeneratedImageResult({required this.bytes, required this.mimeType});
+
+  static GeneratedImageResult fromApiResponse(Map<String, dynamic> response) {
+    final directImage = response['output_image'];
+    if (directImage is Map<String, dynamic>) {
+      final result = _imageFromMap(directImage);
+      if (result != null) return result;
+    }
+
+    for (final outputKey in ['outputs', 'output']) {
+      final outputs = response[outputKey];
+      if (outputs is! List) continue;
+
+      for (final output in outputs) {
+        if (output is! Map<String, dynamic>) continue;
+        final result = _imageFromMap(output);
+        if (result != null) return result;
+        final nestedImage = output['image'];
+        if (nestedImage is Map<String, dynamic>) {
+          final nestedResult = _imageFromMap(nestedImage);
+          if (nestedResult != null) return nestedResult;
+        }
+      }
+    }
+
+    final candidates = response['candidates'];
+    if (candidates is List) {
+      for (final candidate in candidates) {
+        if (candidate is! Map<String, dynamic>) continue;
+        final content = candidate['content'];
+        if (content is! Map<String, dynamic>) continue;
+        final parts = content['parts'];
+        if (parts is! List) continue;
+        for (final part in parts) {
+          if (part is! Map<String, dynamic>) continue;
+          final inlineData = part['inlineData'] ?? part['inline_data'];
+          if (inlineData is Map<String, dynamic>) {
+            final result = _imageFromMap(inlineData);
+            if (result != null) return result;
+          }
+        }
+      }
+    }
+
+    throw const FormatException(
+      'La IA no devolvió una imagen. Comprueba el modelo y la cuota de generación.',
+    );
+  }
+
+  static GeneratedImageResult? _imageFromMap(Map<String, dynamic> map) {
+    final data = map['data'];
+    if (data is! String || data.isEmpty) return null;
+
+    final mimeType = map['mime_type'] ?? map['mimeType'] ?? 'image/png';
+    return GeneratedImageResult(
+      bytes: base64Decode(data),
+      mimeType: mimeType.toString(),
+    );
+  }
+}
+
 class GeminiService {
+  static const String imageGenerationModel = 'gemini-nano-banana-2.1';
+
+  static Future<GeneratedImageResult> generateGroomingSimulation({
+    required Uint8List dogImage,
+    required String dogImagePath,
+    required Uint8List styleReferenceImage,
+    required String styleImagePath,
+    required String petName,
+    required String breed,
+    required String styleName,
+    required String styleDescription,
+    required String stylePromptTemplate,
+    required String coatColor,
+    required String apiKey,
+    http.Client? client,
+  }) async {
+    if (apiKey.trim().isEmpty) {
+      throw Exception(
+        'Configura una clave de Gemini API para generar imágenes.',
+      );
+    }
+
+    final prompt =
+        '''
+Genera una simulación virtual de grooming canino fotorrealista.
+La imagen 1 es la foto original del perro y es la fuente de identidad. La imagen 2 es únicamente la referencia del estilo de grooming.
+Conserva exactamente la identidad reconocible del perro de la imagen 1, su raza ($breed), estructura facial, expresión, proporciones corporales, pose, encuadre y entorno. No sustituyas al perro por el de la referencia ni combines sus identidades.
+Aplica al perro de la imagen 1 el corte "$styleName", tomando de la imagen 2 la forma del corte, longitud, textura, acabado y dirección natural del pelaje. Respeta el color del manto ($coatColor) y adapta el corte a su pelaje real.
+Descripción del estilo: $styleDescription
+${stylePromptTemplate.isEmpty ? '' : 'Indicaciones de estilo: $stylePromptTemplate'}
+${petName.isEmpty ? '' : 'Nombre del perro: $petName.'}
+Entrega una sola imagen realista de alta calidad, con apariencia de fotografía. No añadas texto, etiquetas, collage, marcas de agua, accesorios nuevos ni cambios ajenos al grooming. El resultado es una visualización previa; no cambies la anatomía ni el tamaño del perro.
+''';
+
+    final request =
+        http.Request(
+            'POST',
+            Uri.parse(
+              'https://generativelanguage.googleapis.com/v1beta/interactions',
+            ),
+          )
+          ..headers.addAll({
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey.trim(),
+          })
+          ..body = jsonEncode({
+            'model': imageGenerationModel,
+            'input': [
+              {'type': 'text', 'text': prompt},
+              {
+                'type': 'image',
+                'data': base64Encode(dogImage),
+                'mime_type': _mimeTypeForPath(dogImagePath),
+              },
+              {
+                'type': 'image',
+                'data': base64Encode(styleReferenceImage),
+                'mime_type': _mimeTypeForPath(styleImagePath),
+              },
+            ],
+          });
+
+    final httpClient = client ?? http.Client();
+    try {
+      final streamedResponse = await httpClient
+          .send(request)
+          .timeout(const Duration(seconds: 120));
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        var detail = '';
+        try {
+          final errorBody = jsonDecode(response.body);
+          detail = errorBody['error']?['message']?.toString() ?? '';
+        } catch (_) {
+          detail = response.body;
+        }
+        final suffix = detail.isEmpty ? '' : ': $detail';
+        throw Exception(
+          'Falló la generación de imagen (HTTP ${response.statusCode})$suffix',
+        );
+      }
+
+      final body = jsonDecode(response.body);
+      if (body is! Map<String, dynamic>) {
+        throw const FormatException(
+          'Respuesta inválida del servicio de imágenes.',
+        );
+      }
+      return GeneratedImageResult.fromApiResponse(body);
+    } finally {
+      if (client == null) httpClient.close();
+    }
+  }
+
+  static String _mimeTypeForPath(String path) {
+    final normalized = path.toLowerCase();
+    if (normalized.startsWith('data:')) {
+      final end = normalized.indexOf(';');
+      if (end > 5) return normalized.substring(5, end);
+    }
+    if (normalized.endsWith('.png')) return 'image/png';
+    if (normalized.endsWith('.webp')) return 'image/webp';
+    if (normalized.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
   static bool isShihTzuBreed(String breedName) {
     final normalized = breedName
         .toLowerCase()
@@ -54,14 +226,17 @@ class GeminiService {
     return false;
   }
 
-  static Future<GeminiResult> verifyShihTzu(File imageFile, String apiKey) async {
+  static Future<GeminiResult> verifyShihTzu(
+    Uint8List bytes,
+    String imageName,
+    String apiKey,
+  ) async {
     try {
-      final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
 
       // Determine mimeType based on extension
       String mimeType = 'image/jpeg';
-      final pathLower = imageFile.path.toLowerCase();
+      final pathLower = imageName.toLowerCase();
       if (pathLower.endsWith('.png')) {
         mimeType = 'image/png';
       } else if (pathLower.endsWith('.webp')) {
@@ -80,42 +255,49 @@ class GeminiService {
             'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
           );
 
-          final response = await http.post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'contents': [
-                {
-                  'parts': [
+          final response = await http
+              .post(
+                url,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'contents': [
                     {
-                      'text': 'Analiza esta imagen de un perro. Determina con rigor si es de raza Shih Tzu (o mezcla con fuerte predominio de Shih Tzu). '
-                          'Si es claramente de otra raza como Golden Retriever, Labrador, Pug, Caniche, Chihuahua, etc., "isShihTzu" DEBE ser false. '
-                          'Debes responder ÚNICAMENTE con un objeto JSON válido, sin bloques de código markdown ni texto adicional. '
-                          'El formato JSON debe ser exactamente: '
-                          '{"isShihTzu": true/false, "breed": "Nombre de la raza identificada"}'
+                      'parts': [
+                        {
+                          'text':
+                              'Analiza esta imagen de un perro. Determina con rigor si es de raza Shih Tzu (o mezcla con fuerte predominio de Shih Tzu). '
+                              'Si es claramente de otra raza como Golden Retriever, Labrador, Pug, Caniche, Chihuahua, etc., "isShihTzu" DEBE ser false. '
+                              'Debes responder ÚNICAMENTE con un objeto JSON válido, sin bloques de código markdown ni texto adicional. '
+                              'El formato JSON debe ser exactamente: '
+                              '{"isShihTzu": true/false, "breed": "Nombre de la raza identificada"}',
+                        },
+                        {
+                          'inlineData': {
+                            'mimeType': mimeType,
+                            'data': base64Image,
+                          },
+                        },
+                      ],
                     },
-                    {
-                      'inlineData': {
-                        'mimeType': mimeType,
-                        'data': base64Image,
-                      }
-                    }
-                  ]
-                }
-              ]
-            }),
-          ).timeout(const Duration(seconds: 14));
+                  ],
+                }),
+              )
+              .timeout(const Duration(seconds: 14));
 
           if (response.statusCode == 200) {
             final responseBody = jsonDecode(response.body);
-            final text = responseBody['candidates']?[0]?['content']?[0]?['parts']?[0]?['text'] ??
-                responseBody['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+            final text =
+                responseBody['candidates']?[0]?['content']?[0]?['parts']?[0]?['text'] ??
+                responseBody['candidates']?[0]?['content']?['parts']?[0]?['text']
+                    as String?;
 
             if (text != null && text.trim().isNotEmpty) {
               String cleanJson = text.trim();
               final firstBrace = cleanJson.indexOf('{');
               final lastBrace = cleanJson.lastIndexOf('}');
-              if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+              if (firstBrace != -1 &&
+                  lastBrace != -1 &&
+                  lastBrace > firstBrace) {
                 cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
               }
 
@@ -139,7 +321,7 @@ class GeminiService {
                 breed: isShihTzu ? 'Shih Tzu' : breed,
                 message: isShihTzu
                     ? '¡Excelente! Tu mascota ha sido verificada y está lista para estilizar.'
-                    : 'La foto parece ser de un felino ($breed). Esta aplicación está diseñada para perritos.',
+                    : 'La imagen parece mostrar "$breed", no un Shih Tzu. Selecciona una foto clara de un Shih Tzu para continuar.',
                 isServiceError: false,
               );
             }
@@ -157,11 +339,15 @@ class GeminiService {
         }
       }
 
-      String msg = 'No se pudo verificar la raza con la IA (Código ${lastStatusCode > 0 ? lastStatusCode : "Red"}).';
-      if (lastErrorMsg.toLowerCase().contains('leaked') || lastStatusCode == 403) {
-        msg = 'La clave de Gemini API actual ha sido desactivada por Google (403 Leaked). Por favor genera una nueva clave gratuita en aistudio.google.com e ingrésala en Configuración.';
+      String msg =
+          'No se pudo verificar la raza con la IA (Código ${lastStatusCode > 0 ? lastStatusCode : "Red"}).';
+      if (lastErrorMsg.toLowerCase().contains('leaked') ||
+          lastStatusCode == 403) {
+        msg =
+            'La clave de Gemini API actual ha sido desactivada por Google (403 Leaked). Por favor genera una nueva clave gratuita en aistudio.google.com e ingrésala en Configuración.';
       } else if (lastStatusCode == 429) {
-        msg = 'La cuota diaria de la IA de Google está ocupada temporalmente (429). Puedes confirmar tu Shih Tzu manualmente para continuar.';
+        msg =
+            'La cuota diaria de la IA de Google está ocupada temporalmente (429). Puedes confirmar tu Shih Tzu manualmente para continuar.';
       }
 
       return GeminiResult(
@@ -174,7 +360,8 @@ class GeminiService {
       return GeminiResult(
         isShihTzu: false,
         breed: 'Sin Conexión',
-        message: 'No se pudo conectar con el servicio de IA de Google. Revisa tu conexión a internet o tu clave de API.',
+        message:
+            'No se pudo conectar con el servicio de IA de Google. Revisa tu conexión a internet o tu clave de API.',
         isServiceError: true,
       );
     }
@@ -182,13 +369,16 @@ class GeminiService {
 
   /// Realiza un escáner diagnóstico visual con IA (Gemini Vision) enfocado en
   /// lagrimales, área ocular, nudos, conformación de la carita y corte recomendado.
-  static Future<CoatDiagnosisResult> diagnoseCoatAndFace(File imageFile, String apiKey) async {
+  static Future<CoatDiagnosisResult> diagnoseCoatAndFace(
+    Uint8List bytes,
+    String imageName,
+    String apiKey,
+  ) async {
     try {
-      final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
 
       String mimeType = 'image/jpeg';
-      final pathLower = imageFile.path.toLowerCase();
+      final pathLower = imageName.toLowerCase();
       if (pathLower.endsWith('.png')) {
         mimeType = 'image/png';
       } else if (pathLower.endsWith('.webp')) {
@@ -197,7 +387,8 @@ class GeminiService {
         mimeType = 'image/gif';
       }
 
-      const prompt = '''Eres un médico veterinario especialista en dermatología canina y máster groomer profesional de la raza Shih Tzu.
+      const prompt =
+          '''Eres un médico veterinario especialista en dermatología canina y máster groomer profesional de la raza Shih Tzu.
 Analiza detenidamente esta fotografía enfocándote primero en determinar si es un perro de raza Shih Tzu, y luego analizando su carita, ojos, lagrimales y manto de pelo.
 
 Evalúa con rigor técnico y estético canino:
@@ -252,36 +443,42 @@ Ejemplo exacto de estructura:
             'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
           );
 
-          final response = await http.post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'contents': [
-                {
-                  'parts': [
-                    {'text': prompt},
+          final response = await http
+              .post(
+                url,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'contents': [
                     {
-                      'inlineData': {
-                        'mimeType': mimeType,
-                        'data': base64Image,
-                      }
-                    }
-                  ]
-                }
-              ]
-            }),
-          ).timeout(const Duration(seconds: 18));
+                      'parts': [
+                        {'text': prompt},
+                        {
+                          'inlineData': {
+                            'mimeType': mimeType,
+                            'data': base64Image,
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              )
+              .timeout(const Duration(seconds: 18));
 
           if (response.statusCode == 200) {
             final responseBody = jsonDecode(response.body);
-            final text = responseBody['candidates']?[0]?['content']?[0]?['parts']?[0]?['text'] ??
-                responseBody['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+            final text =
+                responseBody['candidates']?[0]?['content']?[0]?['parts']?[0]?['text'] ??
+                responseBody['candidates']?[0]?['content']?['parts']?[0]?['text']
+                    as String?;
 
             if (text != null && text.trim().isNotEmpty) {
               String cleanJson = text.trim();
               final firstBrace = cleanJson.indexOf('{');
               final lastBrace = cleanJson.lastIndexOf('}');
-              if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+              if (firstBrace != -1 &&
+                  lastBrace != -1 &&
+                  lastBrace > firstBrace) {
                 cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
                 final parsed = jsonDecode(cleanJson);
                 return CoatDiagnosisResult.fromMap(parsed);
@@ -301,49 +498,62 @@ Ejemplo exacto de estructura:
       }
 
       String errDetail = 'Error ${lastStatusCode > 0 ? lastStatusCode : "Red"}';
-      if (lastErrorMsg.toLowerCase().contains('leaked') || lastStatusCode == 403) {
+      if (lastErrorMsg.toLowerCase().contains('leaked') ||
+          lastStatusCode == 403) {
         errDetail = 'Clave API revocada por Google (Leaked)';
       } else if (lastStatusCode == 429) {
         errDetail = 'Cuota diaria de Google IA agotada (429)';
       }
-      return buildFallbackDiagnosis(
-        isError: true,
-        errorReason: errDetail,
-      );
+      return buildFallbackDiagnosis(isError: true, errorReason: errDetail);
     } catch (_) {
       // Ignored: fallback activates below
     }
 
-    return buildFallbackDiagnosis(isError: true, errorReason: 'Sin conexión con la IA');
+    return buildFallbackDiagnosis(
+      isError: true,
+      errorReason: 'Sin conexión con la IA',
+    );
   }
 
-  static CoatDiagnosisResult buildFallbackDiagnosis({bool isError = false, String? errorReason}) {
-    final bool isKeyError = isError && (errorReason?.contains('revocada') == true || errorReason?.contains('403') == true);
-    final bool isQuota = isError && (errorReason?.contains('429') == true || errorReason?.contains('Cuota') == true);
+  static CoatDiagnosisResult buildFallbackDiagnosis({
+    bool isError = false,
+    String? errorReason,
+  }) {
+    final bool isKeyError =
+        isError &&
+        (errorReason?.contains('revocada') == true ||
+            errorReason?.contains('403') == true);
+    final bool isQuota =
+        isError &&
+        (errorReason?.contains('429') == true ||
+            errorReason?.contains('Cuota') == true);
 
     return CoatDiagnosisResult(
       isShihTzu: true,
       detectedBreed: isKeyError
           ? 'Clave de Gemini API Revocada por Google'
           : isQuota
-              ? 'Shih Tzu (Verificación en modo local)'
-              : 'Shih Tzu (Modo local)',
+          ? 'Shih Tzu (Verificación en modo local)'
+          : 'Shih Tzu (Modo local)',
       breedVerificationMessage: isKeyError
           ? 'Google desactivó la clave de API por haber sido reportada como pública. Ve a Configuración e ingresa una nueva clave gratuita de aistudio.google.com'
           : isQuota
-              ? 'La cuota de Google IA gratuita está en pausa. Se activó el diagnóstico estimado para tu Shih Tzu.'
-              : 'Diagnóstico visual asistido por el perfil de la raza Shih Tzu.',
+          ? 'La cuota de Google IA gratuita está en pausa. Se activó el diagnóstico estimado para tu Shih Tzu.'
+          : 'Diagnóstico visual asistido por el perfil de la raza Shih Tzu.',
       overallScore: 88,
       scoreLevel: 'Muy Bueno',
       tearStainStatus: 'Leve',
-      tearStainAdvice: 'Limpieza suave diaria con suero fisiológico y secado con toalla absorbente.',
+      tearStainAdvice:
+          'Limpieza suave diaria con suero fisiológico y secado con toalla absorbente.',
       eyeRiskStatus: 'Seguro / Despejado',
-      eyeRiskAdvice: 'Mantener el área ocular despejada de pelos con cepillado ascendente.',
+      eyeRiskAdvice:
+          'Mantener el área ocular despejada de pelos con cepillado ascendente.',
       coatCondition: 'Manto con buen volumen',
       mattingRisk: 'Medio',
       recommendedStyleId: 'corte_oso',
       recommendedStyleName: 'Corte Oso de Peluche (Teddy Bear)',
-      recommendedStyleReason: 'Es el corte más equilibrado para el cuidado del pelaje y resalta la ternura de su carita.',
+      recommendedStyleReason:
+          'Es el corte más equilibrado para el cuidado del pelaje y resalta la ternura de su carita.',
       faceShape: 'Carita Redonda',
       keyObservations: [
         if (isKeyError)
@@ -353,14 +563,15 @@ Ejemplo exacto de estructura:
         else
           'Diagnóstico preventivo estándar para manto y ojos.',
         'La zona lagrimal debe revisarse periódicamente.',
-        'Corte recomendado por fisionomía: Oso de Peluche.'
+        'Corte recomendado por fisionomía: Oso de Peluche.',
       ],
       groomingActionPlan: [
         'Cepillado 3 veces por semana con carda suave.',
         'Limpieza diaria de lagrimales.',
-        'Baño e hidratación cada 15 a 20 días.'
+        'Baño e hidratación cada 15 a 20 días.',
       ],
-      groomerAdvice: 'Redondear cabeza y hocico tipo pompón; cuerpo recortado a tijera uniforme.',
+      groomerAdvice:
+          'Redondear cabeza y hocico tipo pompón; cuerpo recortado a tijera uniforme.',
     );
   }
 }

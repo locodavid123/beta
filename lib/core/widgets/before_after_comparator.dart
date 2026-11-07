@@ -1,12 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import '../services/image_input_service.dart';
 import '../theme/app_theme.dart';
 
-enum ComparatorDisplayMode {
-  slider,
-  toggle,
-  sideBySide,
-}
+enum ComparatorDisplayMode { slider, toggle, sideBySide }
 
 class BeforeAfterComparator extends StatefulWidget {
   final String beforeImagePath;
@@ -61,7 +57,12 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
     super.dispose();
   }
 
-  Widget _buildImage(String path, {BoxFit fit = BoxFit.cover, double? width, double? height}) {
+  Widget _buildImage(
+    String path, {
+    BoxFit fit = BoxFit.cover,
+    double? width,
+    double? height,
+  }) {
     if (path.isEmpty) {
       return Container(
         width: width,
@@ -85,8 +86,8 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
         ),
       );
     } else {
-      return Image.file(
-        File(path),
+      return AppImage(
+        path: path,
         width: width,
         height: height,
         fit: fit,
@@ -119,7 +120,9 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF221738) : const Color(0xFFF0ECF8),
+                    color: isDark
+                        ? const Color(0xFF221738)
+                        : const Color(0xFFF0ECF8),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Row(
@@ -149,11 +152,15 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    onTap: widget.onFullScreenTap ?? () => _openFullscreenModal(context),
+                    onTap:
+                        widget.onFullScreenTap ??
+                        () => _openFullscreenModal(context),
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF221738) : const Color(0xFFF0ECF8),
+                        color: isDark
+                            ? const Color(0xFF221738)
+                            : const Color(0xFFF0ECF8),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -162,7 +169,9 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
                           Icon(
                             Icons.fullscreen,
                             size: 18,
-                            color: isDark ? Colors.white70 : AppTheme.primaryDark,
+                            color: isDark
+                                ? Colors.white70
+                                : AppTheme.primaryDark,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -170,7 +179,9 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white70 : AppTheme.primaryDark,
+                              color: isDark
+                                  ? Colors.white70
+                                  : AppTheme.primaryDark,
                             ),
                           ),
                         ],
@@ -290,13 +301,17 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
           onHorizontalDragUpdate: (details) {
             setState(() {
               _userHasInteracted = true;
-              _sliderValue = (_sliderValue + (details.delta.dx / totalWidth)).clamp(0.02, 0.98);
+              _sliderValue = (_sliderValue + (details.delta.dx / totalWidth))
+                  .clamp(0.02, 0.98);
             });
           },
           onTapDown: (details) {
             setState(() {
               _userHasInteracted = true;
-              _sliderValue = (details.localPosition.dx / totalWidth).clamp(0.02, 0.98);
+              _sliderValue = (details.localPosition.dx / totalWidth).clamp(
+                0.02,
+                0.98,
+              );
             });
           },
           child: Stack(
@@ -370,14 +385,19 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
                 left: (totalWidth * _sliderValue) - 20,
                 top: (totalHeight / 2) - 20,
                 child: ScaleTransition(
-                  scale: _userHasInteracted ? const AlwaysStoppedAnimation(1.0) : _pulseAnimation,
+                  scale: _userHasInteracted
+                      ? const AlwaysStoppedAnimation(1.0)
+                      : _pulseAnimation,
                   child: Container(
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white,
-                      border: Border.all(color: AppTheme.primaryColor, width: 2.5),
+                      border: Border.all(
+                        color: AppTheme.primaryColor,
+                        width: 2.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.3),
@@ -389,8 +409,16 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.arrow_left, size: 14, color: AppTheme.primaryColor),
-                        Icon(Icons.arrow_right, size: 14, color: AppTheme.primaryColor),
+                        Icon(
+                          Icons.arrow_left,
+                          size: 14,
+                          color: AppTheme.primaryColor,
+                        ),
+                        Icon(
+                          Icons.arrow_right,
+                          size: 14,
+                          color: AppTheme.primaryColor,
+                        ),
                       ],
                     ),
                   ),
@@ -453,12 +481,16 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
             top: 14,
             left: 14,
             child: _buildBadge(
-              label: _showingBeforeInToggle ? widget.beforeLabel : widget.afterLabel,
+              label: _showingBeforeInToggle
+                  ? widget.beforeLabel
+                  : widget.afterLabel,
               icon: _showingBeforeInToggle ? Icons.history : Icons.auto_awesome,
               backgroundColor: _showingBeforeInToggle
                   ? Colors.black.withValues(alpha: 0.75)
                   : AppTheme.primaryDark.withValues(alpha: 0.85),
-              textColor: _showingBeforeInToggle ? Colors.white : AppTheme.goldAccent,
+              textColor: _showingBeforeInToggle
+                  ? Colors.white
+                  : AppTheme.goldAccent,
             ),
           ),
 
@@ -479,7 +511,11 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
                   SizedBox(width: 4),
                   Text(
                     'Mantén presionado',
-                    style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -598,7 +634,10 @@ class _BeforeAfterComparatorState extends State<BeforeAfterComparator>
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: Container(
-                    constraints: const BoxConstraints(maxWidth: 600, maxHeight: 600),
+                    constraints: const BoxConstraints(
+                      maxWidth: 600,
+                      maxHeight: 600,
+                    ),
                     child: InteractiveViewer(
                       panEnabled: true,
                       minScale: 0.8,

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +14,7 @@ import 'add_pet_screen.dart';
 import 'tutorials_screen.dart';
 import 'coat_scanner_screen.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/services/image_input_service.dart';
 
 class SimulatorScreen extends StatefulWidget {
   const SimulatorScreen({super.key});
@@ -31,8 +31,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   String? _errorMessage;
   String _selectedCoatColor = 'Dorado y Blanco';
 
-  File? _newPetImageFile;
+  XFile? _newPetImageFile;
   bool _isNewPetVerified = false;
+  String? _newPetVerificationError;
   bool _isSavingImage = false;
   bool _isSharingImage = false;
 
@@ -82,22 +83,29 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     } else {
       if (_newPetImageFile == null || !_isNewPetVerified) {
         setState(() {
-          _errorMessage = state.language == 'English'
-              ? 'Please upload and verify a photo first.'
-              : state.language == 'Português'
+          _errorMessage =
+              _newPetVerificationError ??
+              (state.language == 'English'
+                  ? 'Please upload and verify a photo first.'
+                  : state.language == 'Português'
                   ? 'Por favor, carregue e verifique uma foto primeiro.'
-                  : 'Por favor, carga y verifica una foto primero.';
+                  : 'Por favor, carga y verifica una foto primero.');
         });
         return;
       }
+      final imagePath = await persistPickedImage(_newPetImageFile!);
       petToUse = Pet(
         id: 'temp_pet_${DateTime.now().millisecondsSinceEpoch}',
-        name: state.language == 'English' ? 'My Shih Tzu' : state.language == 'Português' ? 'Meu Shih Tzu' : 'Mi Shih Tzu',
+        name: state.language == 'English'
+            ? 'My Shih Tzu'
+            : state.language == 'Português'
+            ? 'Meu Shih Tzu'
+            : 'Mi Shih Tzu',
         breed: 'Shih Tzu',
         age: '',
         gender: '',
         notes: '',
-        imagePath: _newPetImageFile!.path,
+        imagePath: imagePath,
         isVerifiedByAI: true,
         userEmail: state.userEmail,
       );
@@ -140,12 +148,14 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       );
 
       if (mounted) {
-        final fileName = savedPath.split(Platform.pathSeparator).last;
+        final fileName = savedPath.split(RegExp(r'[/\\]')).last;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppTheme.primaryDark,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             content: Row(
               children: [
                 const Icon(Icons.check_circle, color: AppTheme.goldAccent),
@@ -157,11 +167,20 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     children: [
                       Text(
                         state.translate('sim_success_download'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       Text(
-                        state.translate('sim_saved_path', params: {'path': fileName}),
-                        style: const TextStyle(fontSize: 11, color: Colors.white70),
+                        state.translate(
+                          'sim_saved_path',
+                          params: {'path': fileName},
+                        ),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -205,9 +224,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al compartir: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al compartir: $e')));
       }
     } finally {
       if (mounted) {
@@ -261,7 +280,10 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.content_cut, color: AppTheme.primaryColor),
+                      child: const Icon(
+                        Icons.content_cut,
+                        color: AppTheme.primaryColor,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -270,11 +292,17 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         children: [
                           Text(
                             state.translate('sim_groomer_card_title'),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                           Text(
                             state.translate('sim_groomer_card_desc'),
-                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
                           ),
                         ],
                       ),
@@ -301,35 +329,62 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF130D20) : const Color(0xFFF7F5FC),
+                    color: isDark
+                        ? const Color(0xFF130D20)
+                        : const Color(0xFFF7F5FC),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.12)),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildGroomerRow('🐕 Mascota:', '${_latestCreation!.petName} (Shih Tzu)'),
+                      _buildGroomerRow(
+                        '🐕 Mascota:',
+                        '${_latestCreation!.petName} (Shih Tzu)',
+                      ),
                       const Divider(height: 16),
-                      _buildGroomerRow('✂️ Estilo deseado:', _latestCreation!.styleName),
+                      _buildGroomerRow(
+                        '✂️ Estilo deseado:',
+                        _latestCreation!.styleName,
+                      ),
                       if (_selectedStyle != null) ...[
                         const Divider(height: 16),
-                        _buildGroomerRow('💈 Tipo de pelaje:', _selectedStyle!.coatType),
+                        _buildGroomerRow(
+                          '💈 Tipo de pelaje:',
+                          _selectedStyle!.coatType,
+                        ),
                         const Divider(height: 16),
-                        _buildGroomerRow('⭐ Dificultad del corte:', _selectedStyle!.difficulty),
+                        _buildGroomerRow(
+                          '⭐ Dificultad del corte:',
+                          _selectedStyle!.difficulty,
+                        ),
                       ],
-                      if (_selectedPet != null && _selectedPet!.notes.isNotEmpty) ...[
+                      if (_selectedPet != null &&
+                          _selectedPet!.notes.isNotEmpty) ...[
                         const Divider(height: 16),
-                        _buildGroomerRow('📝 Notas / Alergias:', _selectedPet!.notes),
+                        _buildGroomerRow(
+                          '📝 Notas / Alergias:',
+                          _selectedPet!.notes,
+                        ),
                       ],
                       const Divider(height: 16),
                       Text(
                         state.translate('sim_groomer_card_instructions'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         _latestCreation!.description,
-                        style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),
@@ -348,21 +403,36 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         styleName: _latestCreation!.styleName,
                       );
                       if (matchingTutorial != null) {
-                        TutorialsScreen.openTutorialGuide(context, matchingTutorial);
+                        TutorialsScreen.openTutorialGuide(
+                          context,
+                          matchingTutorial,
+                        );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(state.translate('sim_no_tutorial_found'))),
+                          SnackBar(
+                            content: Text(
+                              state.translate('sim_no_tutorial_found'),
+                            ),
+                          ),
                         );
                       }
                     },
-                    icon: const Icon(Icons.play_circle_fill_rounded, color: AppTheme.primaryColor),
+                    icon: const Icon(
+                      Icons.play_circle_fill_rounded,
+                      color: AppTheme.primaryColor,
+                    ),
                     label: Text(
                       state.translate('sim_watch_tutorial_btn'),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      side: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 1.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
@@ -375,7 +445,8 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      final groomerShareText = 'Hola! Te comparto la ficha de corte para mi Shih Tzu ${_latestCreation!.petName}.\n'
+                      final groomerShareText =
+                          'Hola! Te comparto la ficha de corte para mi Shih Tzu ${_latestCreation!.petName}.\n'
                           'Estilo deseado: "${_latestCreation!.styleName}".\n'
                           'Notas de la mascota: ${_selectedPet?.notes.isNotEmpty == true ? _selectedPet!.notes : "Ninguna"}.\n'
                           '¡Diseñado con Shih Tzu App! 🐕✂️';
@@ -389,11 +460,17 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     icon: const Icon(Icons.send_rounded, color: Colors.white),
                     label: Text(
                       state.translate('sim_groomer_share_btn'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 15,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
@@ -416,12 +493,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
           ),
         ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 12),
-          ),
-        ),
+        Expanded(child: Text(value, style: const TextStyle(fontSize: 12))),
       ],
     );
   }
@@ -447,7 +519,10 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         if (_stylesScrollController.hasClients && preselected != null) {
           final idx = state.styles.indexWhere((s) => s.id == preselected.id);
           if (idx >= 0) {
-            final targetOffset = (idx * 92.0).clamp(0.0, _stylesScrollController.position.maxScrollExtent);
+            final targetOffset = (idx * 92.0).clamp(
+              0.0,
+              _stylesScrollController.position.maxScrollExtent,
+            );
             _stylesScrollController.animateTo(
               targetOffset,
               duration: const Duration(milliseconds: 350),
@@ -473,7 +548,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
           children: [
             Text(state.translate('sim_title')),
             const SizedBox(width: 6),
-            const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 18),
+            const Icon(
+              Icons.auto_awesome,
+              color: AppTheme.goldAccent,
+              size: 18,
+            ),
           ],
         ),
         centerTitle: true,
@@ -495,7 +574,10 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   const Icon(Icons.stars, color: AppTheme.goldAccent, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    state.translate('sim_credits_avail', params: {'count': state.credits.toString()}),
+                    state.translate(
+                      'sim_credits_avail',
+                      params: {'count': state.credits.toString()},
+                    ),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -513,13 +595,17 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => CoatScannerScreen(initialPet: _selectedPet),
+                    builder: (context) =>
+                        CoatScannerScreen(initialPet: _selectedPet),
                   ),
                 );
               },
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -528,7 +614,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.25)),
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.25),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -538,7 +626,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         color: AppTheme.primaryColor.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.document_scanner_rounded, color: AppTheme.primaryColor, size: 20),
+                      child: const Icon(
+                        Icons.document_scanner_rounded,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -561,7 +653,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.primaryColor),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: AppTheme.primaryColor,
+                    ),
                   ],
                 ),
               ),
@@ -595,7 +691,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const AddPetScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const AddPetScreen(),
+                          ),
                         );
                       },
                       icon: const Icon(Icons.add),
@@ -604,14 +702,18 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   : Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
+                        color: isDark
+                            ? AppTheme.cardDark
+                            : const Color(0xFFF4F0FA),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<Pet>(
                           value: _selectedPet,
                           isExpanded: true,
-                          dropdownColor: isDark ? AppTheme.cardDark : Colors.white,
+                          dropdownColor: isDark
+                              ? AppTheme.cardDark
+                              : Colors.white,
                           style: TextStyle(
                             color: isDark ? Colors.white : Colors.black87,
                             fontWeight: FontWeight.bold,
@@ -640,15 +742,23 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         width: double.infinity,
                         height: 60,
                         decoration: BoxDecoration(
-                          color: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
+                          color: isDark
+                              ? AppTheme.cardDark
+                              : const Color(0xFFF4F0FA),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2), width: 1.5),
+                          border: Border.all(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                            width: 1.5,
+                          ),
                         ),
                         child: Center(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.cloud_upload_outlined, color: AppTheme.primaryColor),
+                              const Icon(
+                                Icons.cloud_upload_outlined,
+                                color: AppTheme.primaryColor,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 state.translate('sim_upload_gallery'),
@@ -679,8 +789,8 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(14),
-                            child: Image.file(
-                              _newPetImageFile!,
+                            child: PickedImage(
+                              image: _newPetImageFile!,
                               width: 64,
                               height: 64,
                               fit: BoxFit.cover,
@@ -692,7 +802,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  state.language == 'English' ? 'Temporary Pet' : state.language == 'Português' ? 'Pet Temporário' : 'Mascota Temporal',
+                                  state.language == 'English'
+                                      ? 'Temporary Pet'
+                                      : state.language == 'Português'
+                                      ? 'Pet Temporário'
+                                      : 'Mascota Temporal',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
@@ -702,17 +816,27 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                 Row(
                                   children: [
                                     Icon(
-                                      _isNewPetVerified ? Icons.verified : Icons.verified_user_outlined,
-                                      color: _isNewPetVerified ? AppTheme.greenAccent : Colors.grey,
+                                      _isNewPetVerified
+                                          ? Icons.verified
+                                          : Icons.verified_user_outlined,
+                                      color: _isNewPetVerified
+                                          ? AppTheme.greenAccent
+                                          : Colors.grey,
                                       size: 14,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       _isNewPetVerified
-                                          ? state.translate('pet_badge_verified')
-                                          : state.translate('pet_badge_unverified'),
+                                          ? state.translate(
+                                              'pet_badge_verified',
+                                            )
+                                          : state.translate(
+                                              'pet_badge_unverified',
+                                            ),
                                       style: TextStyle(
-                                        color: _isNewPetVerified ? AppTheme.greenAccent : Colors.grey,
+                                        color: _isNewPetVerified
+                                            ? AppTheme.greenAccent
+                                            : Colors.grey,
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -723,9 +847,17 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.cached, color: AppTheme.primaryColor),
-                            onPressed: () => _showImageSourceActionSheet(context),
-                            tooltip: state.language == 'English' ? 'Change Photo' : state.language == 'Português' ? 'Alterar Foto' : 'Cambiar Foto',
+                            icon: const Icon(
+                              Icons.cached,
+                              color: AppTheme.primaryColor,
+                            ),
+                            onPressed: () =>
+                                _showImageSourceActionSheet(context),
+                            tooltip: state.language == 'English'
+                                ? 'Change Photo'
+                                : state.language == 'Português'
+                                ? 'Alterar Foto'
+                                : 'Cambiar Foto',
                           ),
                         ],
                       ),
@@ -736,14 +868,18 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             // Tonalidad del pelaje de tu Shih Tzu
             Row(
               children: [
-                const Icon(Icons.palette_outlined, size: 16, color: AppTheme.goldAccent),
+                const Icon(
+                  Icons.palette_outlined,
+                  size: 16,
+                  color: AppTheme.goldAccent,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   state.language == 'English'
                       ? 'Shih Tzu Coat Tone:'
                       : state.language == 'Português'
-                          ? 'Tom da Pelagem:'
-                          : 'Tonalidad del pelaje de tu Shih Tzu:',
+                      ? 'Tom da Pelagem:'
+                      : 'Tonalidad del pelaje de tu Shih Tzu:',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -756,41 +892,54 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: [
-                  'Dorado y Blanco',
-                  'Panda (Blanco y Negro)',
-                  'Tricolor',
-                  'Chocolate',
-                ].map((colorOption) {
-                  final isSelected = _selectedCoatColor == colorOption;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(
-                        colorOption,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected
-                              ? AppTheme.primaryColor
-                              : (isDark ? Colors.grey[300] : Colors.grey[700]),
+                children:
+                    [
+                      'Dorado y Blanco',
+                      'Panda (Blanco y Negro)',
+                      'Tricolor',
+                      'Chocolate',
+                    ].map((colorOption) {
+                      final isSelected = _selectedCoatColor == colorOption;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(
+                            colorOption,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? AppTheme.primaryColor
+                                  : (isDark
+                                        ? Colors.grey[300]
+                                        : Colors.grey[700]),
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: AppTheme.primaryColor.withValues(
+                            alpha: 0.18,
+                          ),
+                          backgroundColor: isDark
+                              ? AppTheme.cardDark
+                              : const Color(0xFFF4F0FA),
+                          side: BorderSide(
+                            color: isSelected
+                                ? AppTheme.primaryColor
+                                : Colors.transparent,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _selectedCoatColor = colorOption);
+                            }
+                          },
                         ),
-                      ),
-                      selected: isSelected,
-                      selectedColor: AppTheme.primaryColor.withValues(alpha: 0.18),
-                      backgroundColor: isDark ? AppTheme.cardDark : const Color(0xFFF4F0FA),
-                      side: BorderSide(
-                        color: isSelected ? AppTheme.primaryColor : Colors.transparent,
-                      ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      onSelected: (val) {
-                        if (val) {
-                          setState(() => _selectedCoatColor = colorOption);
-                        }
-                      },
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
               ),
             ),
             const SizedBox(height: 24),
@@ -802,7 +951,12 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             SizedBox(
               height: 124,
               child: state.styles.isEmpty
-                  ? Center(child: Text(state.translate('sim_loading_styles'), style: TextStyle(color: Colors.grey[500])))
+                  ? Center(
+                      child: Text(
+                        state.translate('sim_loading_styles'),
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
+                    )
                   : ListView.builder(
                       controller: _stylesScrollController,
                       scrollDirection: Axis.horizontal,
@@ -820,18 +974,25 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                           child: Container(
                             width: 105,
                             margin: const EdgeInsets.only(right: 12),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: isDark ? AppTheme.cardDark : Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                                color: isSelected
+                                    ? AppTheme.primaryColor
+                                    : Colors.transparent,
                                 width: 2,
                               ),
                               boxShadow: [
                                 BoxShadow(
                                   color: isSelected
-                                      ? AppTheme.primaryColor.withValues(alpha: 0.25)
+                                      ? AppTheme.primaryColor.withValues(
+                                          alpha: 0.25,
+                                        )
                                       : Colors.black.withValues(alpha: 0.03),
                                   blurRadius: isSelected ? 8 : 4,
                                   offset: const Offset(0, 2),
@@ -850,17 +1011,23 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                           width: 48,
                                           fit: BoxFit.cover,
                                         )
-                                      : Image.file(
-                                          File(style.imagePath),
+                                      : AppImage(
+                                          path: style.imagePath,
                                           height: 48,
                                           width: 48,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => Container(
-                                            height: 48,
-                                            width: 48,
-                                            color: Colors.grey[200],
-                                            child: const Icon(Icons.broken_image, color: Colors.grey, size: 20),
-                                          ),
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                                    height: 48,
+                                                    width: 48,
+                                                    color: Colors.grey[200],
+                                                    child: const Icon(
+                                                      Icons.broken_image,
+                                                      color: Colors.grey,
+                                                      size: 20,
+                                                    ),
+                                                  ),
                                         ),
                                 ),
                                 const SizedBox(height: 6),
@@ -871,9 +1038,15 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
                                     height: 1.15,
-                                    color: isSelected ? AppTheme.primaryColor : (isDark ? Colors.white70 : Colors.black87),
+                                    color: isSelected
+                                        ? AppTheme.primaryColor
+                                        : (isDark
+                                              ? Colors.white70
+                                              : Colors.black87),
                                   ),
                                 ),
                               ],
@@ -886,15 +1059,24 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             if (_selectedStyle != null) ...[
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 18),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppTheme.primaryColor,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -910,19 +1092,35 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       builder: (context) {
                         Tutorial? matchingTut;
                         if (_selectedStyle!.tutorialId.isNotEmpty) {
-                          final match = state.tutorials.where((t) => t.id == _selectedStyle!.tutorialId);
+                          final match = state.tutorials.where(
+                            (t) => t.id == _selectedStyle!.tutorialId,
+                          );
                           if (match.isNotEmpty) matchingTut = match.first;
                         }
                         if (matchingTut == null) {
-                          final key = _selectedStyle!.id.replaceAll('corte_', '');
-                          final fallback = state.tutorials.where((t) => t.id == key || t.id == 't_$key' || t.title.toLowerCase().contains(key));
+                          final key = _selectedStyle!.id.replaceAll(
+                            'corte_',
+                            '',
+                          );
+                          final fallback = state.tutorials.where(
+                            (t) =>
+                                t.id == key ||
+                                t.id == 't_$key' ||
+                                t.title.toLowerCase().contains(key),
+                          );
                           if (fallback.isNotEmpty) matchingTut = fallback.first;
                         }
                         if (matchingTut == null) return const SizedBox.shrink();
                         return GestureDetector(
-                          onTap: () => TutorialsScreen.openTutorialGuide(context, matchingTut!),
+                          onTap: () => TutorialsScreen.openTutorialGuide(
+                            context,
+                            matchingTut!,
+                          ),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFF0000),
                               borderRadius: BorderRadius.circular(10),
@@ -930,7 +1128,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.play_circle_fill, color: Colors.white, size: 13),
+                                Icon(
+                                  Icons.play_circle_fill,
+                                  color: Colors.white,
+                                  size: 13,
+                                ),
                                 SizedBox(width: 4),
                                 Text(
                                   'Ver Tutorial',
@@ -970,7 +1172,10 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(color: AppTheme.redAccent, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: AppTheme.redAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -1009,7 +1214,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                             width: 50,
                             height: 50,
                             child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppTheme.primaryColor,
+                              ),
                               strokeWidth: 5,
                             ),
                           ),
@@ -1025,13 +1232,25 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               value: state.generationProgress,
                               minHeight: 8,
                               backgroundColor: Colors.grey[200],
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppTheme.primaryColor,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            state.translate('sim_percent_completed', params: {'progress': (state.generationProgress * 100).toInt().toString()}),
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            state.translate(
+                              'sim_percent_completed',
+                              params: {
+                                'progress': (state.generationProgress * 100)
+                                    .toInt()
+                                    .toString(),
+                              },
+                            ),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                         ],
                       ),
@@ -1041,9 +1260,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: BeforeAfterComparator(
-                        beforeImagePath: _latestCreation!.originalImagePath.isNotEmpty
+                        beforeImagePath:
+                            _latestCreation!.originalImagePath.isNotEmpty
                             ? _latestCreation!.originalImagePath
-                            : (_selectedPet?.imagePath ?? (_newPetImageFile?.path ?? '')),
+                            : (_selectedPet?.imagePath ??
+                                  (_newPetImageFile?.path ?? '')),
                         afterImagePath: _latestCreation!.imagePath,
                         beforeLabel: state.translate('sim_before'),
                         afterLabel: state.translate('sim_after'),
@@ -1067,16 +1288,29 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.goldAccent.withValues(alpha: 0.15),
+                                  color: AppTheme.goldAccent.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.4)),
+                                  border: Border.all(
+                                    color: AppTheme.goldAccent.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                  ),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.stars, color: AppTheme.goldAccent, size: 12),
+                                    Icon(
+                                      Icons.stars,
+                                      color: AppTheme.goldAccent,
+                                      size: 12,
+                                    ),
                                     SizedBox(width: 4),
                                     Text(
                                       'Shih Tzu Cut',
@@ -1095,7 +1329,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                           Text(
                             _latestCreation!.description,
                             style: TextStyle(
-                              color: isDark ? Colors.grey[300] : Colors.grey[700],
+                              color: isDark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
                               fontSize: 13,
                               height: 1.4,
                             ),
@@ -1115,7 +1351,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFE61D63).withValues(alpha: 0.3),
+                                  color: const Color(
+                                    0xFFE61D63,
+                                  ).withValues(alpha: 0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -1126,37 +1364,59 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
                                 onTap: () {
-                                  final matchingTutorial = state.getTutorialForStyle(
-                                    styleId: _latestCreation!.styleId,
-                                    styleName: _latestCreation!.styleName,
-                                  );
+                                  final matchingTutorial = state
+                                      .getTutorialForStyle(
+                                        styleId: _latestCreation!.styleId,
+                                        styleName: _latestCreation!.styleName,
+                                      );
                                   if (matchingTutorial != null) {
-                                    TutorialsScreen.openTutorialGuide(context, matchingTutorial);
+                                    TutorialsScreen.openTutorialGuide(
+                                      context,
+                                      matchingTutorial,
+                                    );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(state.translate('sim_no_tutorial_found'))),
+                                      SnackBar(
+                                        content: Text(
+                                          state.translate(
+                                            'sim_no_tutorial_found',
+                                          ),
+                                        ),
+                                      ),
                                     );
                                   }
                                 },
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
                                   child: Row(
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.22),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.22,
+                                          ),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                                        child: const Icon(
+                                          Icons.play_arrow_rounded,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              state.translate('sim_watch_tutorial_btn'),
+                                              state.translate(
+                                                'sim_watch_tutorial_btn',
+                                              ),
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold,
@@ -1165,16 +1425,24 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              state.translate('sim_watch_tutorial_desc'),
+                                              state.translate(
+                                                'sim_watch_tutorial_desc',
+                                              ),
                                               style: TextStyle(
-                                                color: Colors.white.withValues(alpha: 0.85),
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.85,
+                                                ),
                                                 fontSize: 11,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 14),
+                                      const Icon(
+                                        Icons.arrow_forward_ios_rounded,
+                                        color: Colors.white70,
+                                        size: 14,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -1189,19 +1457,31 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               Expanded(
                                 flex: 3,
                                 child: OutlinedButton.icon(
-                                  onPressed: _isSavingImage ? null : () => _handleDownload(state),
+                                  onPressed: _isSavingImage
+                                      ? null
+                                      : () => _handleDownload(state),
                                   icon: _isSavingImage
                                       ? const SizedBox(
                                           width: 14,
                                           height: 14,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
                                         )
                                       : const Icon(Icons.download, size: 18),
                                   label: Text(state.translate('sim_download')),
                                   style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: isDark ? Colors.white24 : Colors.grey[300]!),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? Colors.white24
+                                          : Colors.grey[300]!,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1211,22 +1491,38 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               Expanded(
                                 flex: 3,
                                 child: ElevatedButton.icon(
-                                  onPressed: _isSharingImage ? null : () => _handleShare(state),
+                                  onPressed: _isSharingImage
+                                      ? null
+                                      : () => _handleShare(state),
                                   icon: _isSharingImage
                                       ? const SizedBox(
                                           width: 14,
                                           height: 14,
-                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
                                         )
-                                      : const Icon(Icons.share, size: 18, color: Colors.white),
+                                      : const Icon(
+                                          Icons.share,
+                                          size: 18,
+                                          color: Colors.white,
+                                        ),
                                   label: Text(
                                     state.translate('sim_share'),
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppTheme.primaryColor,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1236,14 +1532,21 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                               Tooltip(
                                 message: state.translate('sim_groomer_card'),
                                 child: InkWell(
-                                  onTap: () => _showGroomerCardModal(context, state),
+                                  onTap: () =>
+                                      _showGroomerCardModal(context, state),
                                   borderRadius: BorderRadius.circular(14),
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.goldAccent.withValues(alpha: 0.15),
+                                      color: AppTheme.goldAccent.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.3)),
+                                      border: Border.all(
+                                        color: AppTheme.goldAccent.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                      ),
                                     ),
                                     child: const Icon(
                                       Icons.content_cut,
@@ -1266,7 +1569,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.auto_awesome, color: Colors.grey[300], size: 48),
+                          Icon(
+                            Icons.auto_awesome,
+                            color: Colors.grey[300],
+                            size: 48,
+                          ),
                           const SizedBox(height: 16),
                           Text(
                             state.translate('sim_empty_state_desc'),
@@ -1317,7 +1624,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 20),
+                        const Icon(
+                          Icons.auto_awesome,
+                          color: AppTheme.goldAccent,
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         Text(
                           state.translate('sim_btn_generate'),
@@ -1341,10 +1652,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   Widget _buildStepTitle(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.bold,
-      ),
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
     );
   }
 
@@ -1425,10 +1733,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
               const SizedBox(height: 4),
               Text(
                 state.translate('pet_sheet_desc'),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 20),
               Row(
@@ -1447,13 +1752,18 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.camera_alt_outlined, color: AppTheme.primaryColor, size: 28),
+                            const Icon(
+                              Icons.camera_alt_outlined,
+                              color: AppTheme.primaryColor,
+                              size: 28,
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               state.translate('edit_profile_camera'),
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor),
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
                             ),
                           ],
                         ),
@@ -1475,13 +1785,18 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.photo_library_outlined, color: AppTheme.primaryColor, size: 28),
+                            const Icon(
+                              Icons.photo_library_outlined,
+                              color: AppTheme.primaryColor,
+                              size: 28,
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               state.translate('edit_profile_gallery'),
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor),
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
                             ),
                           ],
                         ),
@@ -1498,11 +1813,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
     final state = Provider.of<AppStateProvider>(context, listen: false);
     try {
-      final pickedFile = await picker.pickImage(
-        source: source,
+      final pickedFile = await pickImage(
+        context,
+        source,
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 85,
@@ -1510,13 +1825,17 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
 
       if (pickedFile == null) return;
 
-      final file = File(pickedFile.path);
-      await _runVerification(file);
+      await _runVerification(pickedFile);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(state.translate('pet_error_pick', params: {'error': e.toString()})),
+            content: Text(
+              state.translate(
+                'pet_error_pick',
+                params: {'error': e.toString()},
+              ),
+            ),
             backgroundColor: AppTheme.redAccent,
           ),
         );
@@ -1524,8 +1843,13 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     }
   }
 
-  Future<void> _runVerification(File file) async {
+  Future<void> _runVerification(XFile file) async {
     final state = Provider.of<AppStateProvider>(context, listen: false);
+    setState(() {
+      _newPetImageFile = file;
+      _isNewPetVerified = false;
+      _newPetVerificationError = null;
+    });
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1553,76 +1877,57 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       ),
     );
 
-    GeminiResult result;
+    late final GeminiResult result;
+    try {
+      final activeKey =
+          state.geminiApiKey.trim().isNotEmpty &&
+              !state.geminiApiKey.trim().contains('AIzaSyBFWudg')
+          ? state.geminiApiKey.trim()
+          : AppConfig.defaultGeminiApiKey.trim();
 
-    final activeKey = state.geminiApiKey.trim().isNotEmpty &&
-            !state.geminiApiKey.trim().contains('AIzaSyBFWudg')
-        ? state.geminiApiKey.trim()
-        : AppConfig.defaultGeminiApiKey.trim();
-
-    if (activeKey.isNotEmpty) {
-      result = await GeminiService.verifyShihTzu(file, activeKey);
-    } else {
+      result = activeKey.isNotEmpty
+          ? await GeminiService.verifyShihTzu(
+              await file.readAsBytes(),
+              file.name,
+              activeKey,
+            )
+          : GeminiResult(
+              isShihTzu: false,
+              breed: 'No configurado',
+              message:
+                  'No se encontró una clave de Gemini activa para verificar la raza Shih Tzu.',
+              isServiceError: true,
+            );
+    } catch (error) {
       result = GeminiResult(
         isShihTzu: false,
-        breed: 'No configurado',
-        message: 'No se encontró una clave de Gemini activa para verificar la raza Shih Tzu.',
+        breed: 'Error de verificación',
+        message: 'No se pudo verificar la foto. Inténtalo de nuevo: $error',
         isServiceError: true,
       );
+    } finally {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
     }
 
-    if (mounted) {
-      Navigator.pop(context); // Dismiss the loading dialog
-    }
-
-    // Always set the chosen photo and verify it
+    if (!mounted) return;
     setState(() {
       _newPetImageFile = file;
-      _isNewPetVerified = true;
-      _errorMessage = null;
+      _isNewPetVerified = result.isVerifiedShihTzu;
+      _newPetVerificationError = result.isVerifiedShihTzu
+          ? null
+          : result.message;
+      _errorMessage = result.isVerifiedShihTzu ? null : result.message;
     });
 
-    if (result.isShihTzu) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.greenAccent,
-            content: Text(result.message),
-          ),
-        );
-      }
-    } else {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                const Icon(Icons.check_circle_outline, color: AppTheme.greenAccent, size: 28),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('Foto Lista para Simular'),
-                ),
-              ],
-            ),
-            content: Text(
-              '${result.message}\n\nTu perrito está listo para probar todos los estilos de corte en el simulador.',
-            ),
-            actions: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Continuar'),
-              ),
-            ],
-          ),
-        );
-      }
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: result.isVerifiedShihTzu
+            ? AppTheme.greenAccent
+            : AppTheme.redAccent,
+        content: Text(result.message),
+      ),
+    );
   }
 }

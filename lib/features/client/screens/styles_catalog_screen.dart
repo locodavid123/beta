@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
@@ -6,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/models/style.dart';
 import '../../../core/models/pet.dart';
 import '../../../core/models/tutorial.dart';
+import '../../../core/services/image_input_service.dart';
 import 'tutorials_screen.dart';
 
 class StylesCatalogScreen extends StatefulWidget {
@@ -22,14 +22,22 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
 
   String _getCategoryTranslationKey(String category) {
     switch (category) {
-      case 'Todos': return 'cat_all';
-      case 'Fantasía': return 'cat_fantasy';
-      case 'Arte': return 'cat_art';
-      case 'Clásico': return 'cat_classic';
-      case 'Steampunk': return 'cat_steampunk';
-      case 'Sci-Fi': return 'cat_scifi';
-      case 'Cute': return 'cat_cute';
-      default: return category;
+      case 'Todos':
+        return 'cat_all';
+      case 'Fantasía':
+        return 'cat_fantasy';
+      case 'Arte':
+        return 'cat_art';
+      case 'Clásico':
+        return 'cat_classic';
+      case 'Steampunk':
+        return 'cat_steampunk';
+      case 'Sci-Fi':
+        return 'cat_scifi';
+      case 'Cute':
+        return 'cat_cute';
+      default:
+        return category;
     }
   }
 
@@ -40,18 +48,16 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
     }
     final key = style.id.replaceAll('corte_', '');
     final fallback = state.tutorials.where(
-      (t) => t.id == key || t.id == 't_$key' || t.title.toLowerCase().contains(key),
+      (t) =>
+          t.id == key ||
+          t.id == 't_$key' ||
+          t.title.toLowerCase().contains(key),
     );
     if (fallback.isNotEmpty) return fallback.first;
     return null;
   }
 
-  final List<String> _categories = [
-    'Todos',
-    'Clásico',
-    'Cute',
-    'Fantasía',
-  ];
+  final List<String> _categories = ['Todos', 'Clásico', 'Cute', 'Fantasía'];
 
   @override
   void dispose() {
@@ -66,8 +72,11 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
 
     // Filter styles based on category and search query
     final filteredStyles = state.styles.where((style) {
-      final matchesCategory = _selectedCategory == 'Todos' || style.category.toLowerCase() == _selectedCategory.toLowerCase();
-      final matchesSearch = style.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+      final matchesCategory =
+          _selectedCategory == 'Todos' ||
+          style.category.toLowerCase() == _selectedCategory.toLowerCase();
+      final matchesSearch =
+          style.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           style.description.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     }).toList();
@@ -76,12 +85,7 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
       appBar: AppBar(
         title: Text(state.translate('catalog_title')),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,8 +133,12 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                     label: Text(
                       state.translate(_getCategoryTranslationKey(cat)),
                       style: TextStyle(
-                        color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[700]),
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.grey[300] : Colors.grey[700]),
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                     selected: isSelected,
@@ -142,7 +150,9 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                       }
                     },
                     selectedColor: AppTheme.primaryColor,
-                    backgroundColor: isDark ? AppTheme.cardDark : const Color(0xFFEFEBFA),
+                    backgroundColor: isDark
+                        ? AppTheme.cardDark
+                        : const Color(0xFFEFEBFA),
                     checkmarkColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
@@ -159,19 +169,20 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
           Expanded(
             child: filteredStyles.isEmpty
                 ? Center(
-                      child: Text(
-                        state.translate('catalog_empty_msg'),
-                        style: TextStyle(color: Colors.grey[500]),
-                      ),
+                    child: Text(
+                      state.translate('catalog_empty_msg'),
+                      style: TextStyle(color: Colors.grey[500]),
+                    ),
                   )
                 : GridView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.8,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.8,
+                        ),
                     itemCount: filteredStyles.length,
                     itemBuilder: (context, index) {
                       final style = filteredStyles[index];
@@ -212,23 +223,30 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                 // Style Image
                 Expanded(
                   child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                     child: style.imagePath.startsWith('assets/')
                         ? Image.asset(
                             style.imagePath,
                             width: double.infinity,
                             fit: BoxFit.cover,
                           )
-                        : Image.file(
-                            File(style.imagePath),
+                        : AppImage(
+                            path: style.imagePath,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: Colors.grey[200],
-                              width: double.infinity,
-                              height: double.infinity,
-                              child: const Icon(Icons.broken_image, color: Colors.grey, size: 40),
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                                  color: Colors.grey[200],
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  child: const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.grey,
+                                    size: 40,
+                                  ),
+                                ),
                           ),
                   ),
                 ),
@@ -252,7 +270,9 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            state.translate(_getCategoryTranslationKey(style.category)),
+                            state.translate(
+                              _getCategoryTranslationKey(style.category),
+                            ),
                             style: TextStyle(
                               color: Colors.grey[500],
                               fontSize: 11,
@@ -262,21 +282,38 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                           InkWell(
                             borderRadius: BorderRadius.circular(12),
                             onTap: () {
-                              final petToUse = state.pets.isNotEmpty ? state.pets.first : null;
-                              state.selectStyleForSimulation(style, pet: petToUse);
+                              final petToUse = state.pets.isNotEmpty
+                                  ? state.pets.first
+                                  : null;
+                              state.selectStyleForSimulation(
+                                style,
+                                pet: petToUse,
+                              );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   behavior: SnackBarBehavior.floating,
                                   backgroundColor: AppTheme.primaryColor,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                   content: Row(
                                     children: [
-                                      const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 18),
+                                      const Icon(
+                                        Icons.auto_awesome,
+                                        color: AppTheme.goldAccent,
+                                        size: 18,
+                                      ),
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          state.translate('catalog_style_selected_snack', params: {'style': style.name}),
-                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                          state.translate(
+                                            'catalog_style_selected_snack',
+                                            params: {'style': style.name},
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -286,9 +323,14 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                               );
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.12,
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -326,7 +368,10 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                 top: 10,
                 left: 10,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.goldAccent,
                     borderRadius: BorderRadius.circular(10),
@@ -339,7 +384,11 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.local_fire_department, color: Colors.white, size: 10),
+                      Icon(
+                        Icons.local_fire_department,
+                        color: Colors.white,
+                        size: 10,
+                      ),
                       SizedBox(width: 2),
                       Text(
                         'Hot',
@@ -360,9 +409,13 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                 top: 10,
                 right: 10,
                 child: GestureDetector(
-                  onTap: () => TutorialsScreen.openTutorialGuide(context, tutorial),
+                  onTap: () =>
+                      TutorialsScreen.openTutorialGuide(context, tutorial),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF0000),
                       borderRadius: BorderRadius.circular(10),
@@ -377,7 +430,11 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.play_circle_fill, color: Colors.white, size: 11),
+                        Icon(
+                          Icons.play_circle_fill,
+                          color: Colors.white,
+                          size: 11,
+                        ),
                         SizedBox(width: 3),
                         Text(
                           'Video',
@@ -414,7 +471,9 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: isDark ? AppTheme.bgDark : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
               ),
               padding: const EdgeInsets.only(bottom: 24),
               child: Column(
@@ -444,17 +503,19 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: style.imagePath.startsWith('assets/')
-                          ? Image.asset(
-                              style.imagePath,
+                          ? Image.asset(style.imagePath, fit: BoxFit.cover)
+                          : AppImage(
+                              path: style.imagePath,
                               fit: BoxFit.cover,
-                            )
-                          : Image.file(
-                              File(style.imagePath),
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                color: Colors.grey[200],
-                                child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
-                              ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    color: Colors.grey[200],
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      color: Colors.grey,
+                                      size: 50,
+                                    ),
+                                  ),
                             ),
                     ),
                   ),
@@ -477,7 +538,10 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                         if (style.isHot) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppTheme.goldAccent,
                               borderRadius: BorderRadius.circular(10),
@@ -485,7 +549,11 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.local_fire_department, color: Colors.white, size: 10),
+                                Icon(
+                                  Icons.local_fire_department,
+                                  color: Colors.white,
+                                  size: 10,
+                                ),
                                 SizedBox(width: 2),
                                 Text(
                                   'HOT',
@@ -513,7 +581,9 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                         _buildDetailBadge(
                           context,
                           Icons.category_outlined,
-                          state.translate(_getCategoryTranslationKey(style.category)),
+                          state.translate(
+                            _getCategoryTranslationKey(style.category),
+                          ),
                         ),
                         _buildDetailBadge(
                           context,
@@ -561,37 +631,57 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                             },
                             child: Container(
                               margin: const EdgeInsets.only(right: 10),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: isPetSelected
-                                    ? AppTheme.primaryColor.withValues(alpha: 0.12)
-                                    : (isDark ? AppTheme.cardDark : Colors.grey[100]),
+                                    ? AppTheme.primaryColor.withValues(
+                                        alpha: 0.12,
+                                      )
+                                    : (isDark
+                                          ? AppTheme.cardDark
+                                          : Colors.grey[100]),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: isPetSelected ? AppTheme.primaryColor : Colors.transparent,
+                                  color: isPetSelected
+                                      ? AppTheme.primaryColor
+                                      : Colors.transparent,
                                   width: 1.5,
                                 ),
                               ),
                               child: Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 14,
-                                    backgroundImage: pet.imagePath.startsWith('assets/')
-                                        ? AssetImage(pet.imagePath) as ImageProvider
-                                        : FileImage(File(pet.imagePath)),
+                                  ClipOval(
+                                    child: AppImage(
+                                      path: pet.imagePath,
+                                      width: 28,
+                                      height: 28,
+                                    ),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
                                     pet.name,
                                     style: TextStyle(
-                                      fontWeight: isPetSelected ? FontWeight.bold : FontWeight.w500,
+                                      fontWeight: isPetSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.w500,
                                       fontSize: 12,
-                                      color: isPetSelected ? AppTheme.primaryColor : (isDark ? Colors.white : Colors.black87),
+                                      color: isPetSelected
+                                          ? AppTheme.primaryColor
+                                          : (isDark
+                                                ? Colors.white
+                                                : Colors.black87),
                                     ),
                                   ),
                                   if (isPetSelected) ...[
                                     const SizedBox(width: 4),
-                                    const Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 14),
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: AppTheme.primaryColor,
+                                      size: 14,
+                                    ),
                                   ],
                                 ],
                               ),
@@ -640,10 +730,14 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF0000).withValues(alpha: 0.08),
+                            color: const Color(
+                              0xFFFF0000,
+                            ).withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: const Color(0xFFFF0000).withValues(alpha: 0.25),
+                              color: const Color(
+                                0xFFFF0000,
+                              ).withValues(alpha: 0.25),
                               width: 1,
                             ),
                           ),
@@ -656,7 +750,11 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                                   color: Color(0xFFFF0000),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
+                                child: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -676,11 +774,17 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                                       tutorial.title,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                     Text(
                                       '${tutorial.duration} • ${tutorial.difficulty}',
-                                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                                      style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 11,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -689,15 +793,32 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                               ElevatedButton.icon(
                                 onPressed: () {
                                   Navigator.pop(context);
-                                  TutorialsScreen.openTutorialGuide(context, tutorial);
+                                  TutorialsScreen.openTutorialGuide(
+                                    context,
+                                    tutorial,
+                                  );
                                 },
-                                icon: const Icon(Icons.play_circle_fill, size: 14),
-                                label: const Text('Ver', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                icon: const Icon(
+                                  Icons.play_circle_fill,
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'Ver',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFF0000),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                   elevation: 0,
                                 ),
                               ),
@@ -718,9 +839,18 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                         OutlinedButton(
                           onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            side: BorderSide(
+                              color: isDark
+                                  ? Colors.grey[700]!
+                                  : Colors.grey[300]!,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
                           ),
                           child: Text(
                             state.translate('catalog_close'),
@@ -736,7 +866,9 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.3,
+                                  ),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -745,20 +877,34 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                             child: ElevatedButton.icon(
                               onPressed: () {
                                 Navigator.pop(context);
-                                state.selectStyleForSimulation(style, pet: chosenPet);
+                                state.selectStyleForSimulation(
+                                  style,
+                                  pet: chosenPet,
+                                );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     behavior: SnackBarBehavior.floating,
                                     backgroundColor: AppTheme.primaryColor,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                     content: Row(
                                       children: [
-                                        const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 20),
+                                        const Icon(
+                                          Icons.auto_awesome,
+                                          color: AppTheme.goldAccent,
+                                          size: 20,
+                                        ),
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Text(
-                                            state.translate('catalog_style_selected_snack', params: {'style': style.name}),
-                                            style: const TextStyle(fontWeight: FontWeight.w600),
+                                            state.translate(
+                                              'catalog_style_selected_snack',
+                                              params: {'style': style.name},
+                                            ),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -767,10 +913,17 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                                   ),
                                 );
                               },
-                              icon: const Icon(Icons.auto_awesome, size: 18, color: Colors.white),
+                              icon: const Icon(
+                                Icons.auto_awesome,
+                                size: 18,
+                                color: Colors.white,
+                              ),
                               label: Text(
                                 chosenPet != null
-                                    ? state.translate('catalog_try_with_pet', params: {'name': chosenPet!.name})
+                                    ? state.translate(
+                                        'catalog_try_with_pet',
+                                        params: {'name': chosenPet!.name},
+                                      )
                                     : state.translate('catalog_try_on_my_pet'),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -786,7 +939,9 @@ class _StylesCatalogScreenState extends State<StylesCatalogScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                               ),
                             ),
                           ),

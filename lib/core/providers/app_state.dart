@@ -6,6 +6,8 @@ import '../models/creation.dart';
 import '../models/tutorial.dart';
 import '../models/report.dart';
 import '../services/firebase_service.dart';
+import '../services/gemini_service.dart';
+import '../services/image_input_service.dart';
 import '../utils/translations.dart';
 import '../config/app_config.dart';
 
@@ -93,7 +95,8 @@ class AppStateProvider extends ChangeNotifier {
   // Auth Status
   bool get isAuthenticated => _firebaseService.currentUserEmail != null;
   String get userName => _firebaseService.currentUserName;
-  String get userEmail => _firebaseService.currentUserEmail ?? 'invitado@correo.com';
+  String get userEmail =>
+      _firebaseService.currentUserEmail ?? 'invitado@correo.com';
   String get userRole => _firebaseService.currentUserRole;
 
   // Constructor
@@ -259,23 +262,36 @@ class AppStateProvider extends ChangeNotifier {
     // Coincidencia exacta por palabras clave de cortes de Shih Tzu
     for (final t in _tutorials) {
       final tTitle = t.title.toLowerCase();
-      if ((sId.contains('cachorro') || sName.contains('cachorro') || sName.contains('puppy')) &&
+      if ((sId.contains('cachorro') ||
+              sName.contains('cachorro') ||
+              sName.contains('puppy')) &&
           (tTitle.contains('puppy') || tTitle.contains('cachorro'))) {
         return t;
       }
-      if ((sId.contains('oso') || sName.contains('oso') || sName.contains('teddy')) &&
+      if ((sId.contains('oso') ||
+              sName.contains('oso') ||
+              sName.contains('teddy')) &&
           (tTitle.contains('oso') || tTitle.contains('teddy'))) {
         return t;
       }
-      if ((sId.contains('leon') || sName.contains('león') || sName.contains('leon')) &&
+      if ((sId.contains('leon') ||
+              sName.contains('león') ||
+              sName.contains('leon')) &&
           (tTitle.contains('león') || tTitle.contains('leon'))) {
         return t;
       }
-      if ((sId.contains('exhibicion') || sName.contains('exhibición') || sName.contains('exposicion') || sName.contains('manto')) &&
-          (tTitle.contains('exhibición') || tTitle.contains('exposicion') || tTitle.contains('manto'))) {
+      if ((sId.contains('exhibicion') ||
+              sName.contains('exhibición') ||
+              sName.contains('exposicion') ||
+              sName.contains('manto')) &&
+          (tTitle.contains('exhibición') ||
+              tTitle.contains('exposicion') ||
+              tTitle.contains('manto'))) {
         return t;
       }
-      if ((sId.contains('topknot') || sName.contains('top knot') || sName.contains('moño')) &&
+      if ((sId.contains('topknot') ||
+              sName.contains('top knot') ||
+              sName.contains('moño')) &&
           (tTitle.contains('top knot') || tTitle.contains('moño'))) {
         return t;
       }
@@ -339,16 +355,40 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateUserRoleAndCredits(String email, String role, int credits, [String? name, String? password]) async {
-    await _firebaseService.updateUserInDatabase(email, role, credits, name, password);
+  Future<void> updateUserRoleAndCredits(
+    String email,
+    String role,
+    int credits, [
+    String? name,
+    String? password,
+  ]) async {
+    await _firebaseService.updateUserInDatabase(
+      email,
+      role,
+      credits,
+      name,
+      password,
+    );
     if (email.trim().toLowerCase() == userEmail.trim().toLowerCase()) {
       _credits = credits;
     }
     await reloadUsers();
   }
 
-  Future<void> createUserFromAdmin(String name, String email, String role, [int credits = 5, String password = 'password123']) async {
-    await _firebaseService.addUserToDatabase(name, email, role, credits, password);
+  Future<void> createUserFromAdmin(
+    String name,
+    String email,
+    String role, [
+    int credits = 5,
+    String password = 'password123',
+  ]) async {
+    await _firebaseService.addUserToDatabase(
+      name,
+      email,
+      role,
+      credits,
+      password,
+    );
     await reloadUsers();
   }
 
@@ -363,10 +403,16 @@ class AppStateProvider extends ChangeNotifier {
       (u) => (u['email'] ?? '').toString().trim().toLowerCase() == cleanEmail,
       orElse: () => {},
     );
-    final currentCredits = (user['credits'] as int?) ?? (cleanEmail == 'cliente_prueba@email.com' ? _credits : 5);
+    final currentCredits =
+        (user['credits'] as int?) ??
+        (cleanEmail == 'cliente_prueba@email.com' ? _credits : 5);
     final newCredits = currentCredits + amount;
     final role = (user['role'] as String?) ?? 'client';
-    final name = (user['name'] as String?) ?? (cleanEmail == 'cliente_prueba@email.com' ? 'Valentina López' : 'Usuario');
+    final name =
+        (user['name'] as String?) ??
+        (cleanEmail == 'cliente_prueba@email.com'
+            ? 'Valentina López'
+            : 'Usuario');
     await updateUserRoleAndCredits(cleanEmail, role, newCredits, name);
   }
 
@@ -447,73 +493,80 @@ class AppStateProvider extends ChangeNotifier {
     await refreshAllData();
   }
 
-  // --- Generation Logic (Simulated or Real Gemini) ---
+  // --- Grooming simulation ---
   Future<Creation?> generateArt({
     required Pet pet,
     required ArtStyle style,
     String coatColor = 'Dorado y Blanco',
   }) async {
     if (_credits <= 0) {
-      throw Exception("Créditos insuficientes. Visita tu perfil para obtener más.");
+      throw Exception(
+        "Créditos insuficientes. Visita tu perfil para obtener más.",
+      );
     }
 
     _isGenerating = true;
     _generationProgress = 0.0;
     notifyListeners();
 
-    // Simulación de progreso con pasos realistas de estilismo
-    for (int i = 1; i <= 10; i++) {
-      await Future.delayed(const Duration(milliseconds: 250));
-      _generationProgress = i / 10.0;
+    try {
+      if (pet.imagePath.isEmpty || style.imagePath.isEmpty) {
+        throw Exception(
+          'Selecciona una foto del perro y una referencia de estilo.',
+        );
+      }
+
+      _generationProgress = 0.1;
+      notifyListeners();
+      final dogImage = await readImageBytes(pet.imagePath);
+      final styleReferenceImage = await readImageBytes(style.imagePath);
+
+      final generatedImage = await GeminiService.generateGroomingSimulation(
+        dogImage: dogImage,
+        dogImagePath: pet.imagePath,
+        styleReferenceImage: styleReferenceImage,
+        styleImagePath: style.imagePath,
+        petName: pet.name,
+        breed: pet.breed,
+        styleName: style.name,
+        styleDescription: style.description,
+        stylePromptTemplate: style.promptTemplate,
+        coatColor: coatColor,
+        apiKey: _geminiApiKey,
+      );
+
+      _generationProgress = 0.9;
+      notifyListeners();
+      final resultingImagePath = await persistGeneratedImage(
+        generatedImage.bytes,
+        generatedImage.mimeType,
+      );
+
+      final newCreation = Creation(
+        id: 'creation_${DateTime.now().millisecondsSinceEpoch}',
+        petId: pet.id,
+        petName: pet.name,
+        styleId: style.id,
+        styleName: style.name,
+        imagePath: resultingImagePath,
+        originalImagePath: pet.imagePath,
+        date: DateTime.now(),
+        likes: 0,
+        description:
+            'Simulación visual generada con IA para ${pet.name} con el estilo "${style.name}". El resultado es una referencia previa, no garantiza el resultado real del servicio.',
+      );
+
+      await _firebaseService.addCreation(newCreation);
+      _credits -= 1;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('user_credits', _credits);
+      await refreshAllData();
+      return newCreation;
+    } finally {
+      _isGenerating = false;
+      _generationProgress = 0.0;
       notifyListeners();
     }
-
-    // Selección inteligente de la imagen según la tonalidad del pelaje
-    String resultingImagePath = style.imagePath;
-
-    final lowerColor = coatColor.toLowerCase();
-    final petNotes = '${pet.name} ${pet.notes}'.toLowerCase();
-    final isBlackAndWhite = lowerColor.contains('negro') ||
-        lowerColor.contains('panda') ||
-        petNotes.contains('negro') ||
-        petNotes.contains('panda') ||
-        petNotes.contains('black');
-
-    if (isBlackAndWhite) {
-      if (style.id == 'corte_cachorro') {
-        resultingImagePath = 'assets/images/corte_cachorro_bw.png';
-      } else if (style.id == 'corte_oso') {
-        resultingImagePath = 'assets/images/corte_oso_bw.png';
-      }
-    }
-
-    // Descripción personalizada para esta mascota y corte
-    String desc = '${pet.name} luce espectacular con su nuevo "${style.name}". Pelaje estilizado en salón profesional con acabado sedoso, líneas de corte definidas y contorno adaptado a su carita de Shih Tzu.';
-
-    // Subtract 1 credit
-    _credits -= 1;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('user_credits', _credits);
-
-    final newCreation = Creation(
-      id: 'creation_${DateTime.now().millisecondsSinceEpoch}',
-      petId: pet.id,
-      petName: pet.name,
-      styleId: style.id,
-      styleName: style.name,
-      imagePath: resultingImagePath,
-      originalImagePath: pet.imagePath,
-      date: DateTime.now(),
-      likes: 12 + (DateTime.now().millisecond % 20),
-      description: desc,
-    );
-
-    await _firebaseService.addCreation(newCreation);
-    await refreshAllData();
-
-    _isGenerating = false;
-    notifyListeners();
-    return newCreation;
   }
 
   // Clear history local mock

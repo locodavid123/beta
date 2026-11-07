@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/pet.dart';
@@ -6,13 +8,12 @@ import '../models/creation.dart';
 import '../models/tutorial.dart';
 import '../models/report.dart';
 import '../services/firebase_service.dart';
-import '../services/gemini_service.dart';
-import '../services/image_input_service.dart';
 import '../utils/translations.dart';
 import '../config/app_config.dart';
 
 class AppStateProvider extends ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
+  StreamSubscription<Map<String, dynamic>>? _systemSettingsSubscription;
 
   // Navigation
   int _currentNavIndex = 0;
@@ -81,11 +82,17 @@ class AppStateProvider extends ChangeNotifier {
   String _userPhoto = '';
   String get userPhoto => _userPhoto;
 
-  int _credits = 5;
+  int _credits = 0;
   int get credits => _credits;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+  String? _initializationError;
+  String? get initializationError => _initializationError;
+  bool _publicRegistrationEnabled = true;
+  bool get publicRegistrationEnabled => _publicRegistrationEnabled;
+  bool _maintenanceMode = false;
+  bool get maintenanceMode => _maintenanceMode;
 
   bool _isGenerating = false;
   bool get isGenerating => _isGenerating;
@@ -106,58 +113,92 @@ class AppStateProvider extends ChangeNotifier {
 
   Future<void> _initApp() async {
     _isLoading = true;
+    _initializationError = null;
     notifyListeners();
 
-    // Init Firebase/Mock
-    await _firebaseService.init();
+    try {
+      await _systemSettingsSubscription?.cancel();
+      _systemSettingsSubscription = null;
+      await _firebaseService.init();
+      _applySystemSettings(await _firebaseService.getSystemSettings());
+      _systemSettingsSubscription = _firebaseService
+          .watchSystemSettings()
+          .listen(
+            _applySystemSettings,
+            onError: (Object error, StackTrace stackTrace) {
+              _initializationError =
+                  'No se pudo sincronizar la configuración de Firebase: $error';
+              notifyListeners();
+            },
+          );
 
-    // Load Settings from SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    _isDarkMode = prefs.getBool('is_dark_mode') ?? false;
-    _language = prefs.getString('language') ?? 'Español';
-    _pushNotifications = prefs.getBool('push_notifications') ?? true;
-    _emailNotifications = prefs.getBool('email_notifications') ?? false;
-    _imageQuality = prefs.getString('image_quality') ?? 'Alta (más lento)';
-    final savedApiKey = prefs.getString('gemini_api_key');
-    if (savedApiKey != null &&
-        savedApiKey.trim().isNotEmpty &&
-        !savedApiKey.contains('AIzaSyBFWudg')) {
-      _geminiApiKey = savedApiKey.trim();
-    } else {
-      _geminiApiKey = AppConfig.defaultGeminiApiKey.trim();
-      await prefs.setString('gemini_api_key', _geminiApiKey);
+      final prefs = await SharedPreferences.getInstance();
+      final savedApiKey = prefs.getString('gemini_api_key');
+      if (savedApiKey != null &&
+          savedApiKey.trim().isNotEmpty &&
+          !savedApiKey.contains('AIzaSyBFWudg')) {
+        _geminiApiKey = savedApiKey.trim();
+      } else {
+        _geminiApiKey = AppConfig.defaultGeminiApiKey.trim();
+        await prefs.setString('gemini_api_key', _geminiApiKey);
+      }
+
+      _userPhoto = _firebaseService.currentUserPhoto;
+      if (isAuthenticated) {
+        final profile = await _firebaseService.getCurrentUserProfile();
+        _credits = (profile['credits'] as num?)?.toInt() ?? 0;
+        _isDarkMode = profile['isDarkMode'] as bool? ?? false;
+        _language = profile['language'] as String? ?? 'Español';
+        _pushNotifications = profile['pushNotifications'] as bool? ?? true;
+        _emailNotifications = profile['emailNotifications'] as bool? ?? false;
+        _imageQuality =
+            profile['imageQuality'] as String? ?? 'Alta (más lento)';
+        _favoriteTutorialIds = await _firebaseService.getCurrentUserList(
+          'favoriteTutorialIds',
+        );
+        _completedTutorialIds = await _firebaseService.getCurrentUserList(
+          'completedTutorialIds',
+        );
+      } else {
+        _credits = 0;
+        _isDarkMode = false;
+        _language = 'Español';
+        _pushNotifications = true;
+        _emailNotifications = false;
+        _imageQuality = 'Alta (más lento)';
+        _favoriteTutorialIds = [];
+        _completedTutorialIds = [];
+      }
+
+      await refreshAllData();
+    } catch (e) {
+      _initializationError = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    _credits = prefs.getInt('user_credits') ?? 5;
-    _userPhoto = prefs.getString('user_photo') ?? '';
-    _favoriteTutorialIds = prefs.getStringList('favorite_tutorials') ?? [];
-    _completedTutorialIds = prefs.getStringList('completed_tutorials') ?? [];
+  }
 
-    // Load data lists
-    await refreshAllData();
+  Future<void> retryInitialization() => _initApp();
 
-    _isLoading = false;
+  void _applySystemSettings(Map<String, dynamic> settings) {
+    _publicRegistrationEnabled =
+        settings['publicRegistration'] as bool? ?? true;
+    _maintenanceMode = settings['maintenanceMode'] as bool? ?? false;
     notifyListeners();
   }
 
   Future<void> refreshAllData() async {
-    try {
-      _pets = await _firebaseService.getPets();
-    } catch (_) {}
-    try {
-      _styles = await _firebaseService.getStyles();
-    } catch (_) {}
-    try {
-      _creations = await _firebaseService.getCreations();
-    } catch (_) {}
-    try {
-      _tutorials = await _firebaseService.getTutorials();
-    } catch (_) {}
-    try {
-      _reports = await _firebaseService.getReports();
-    } catch (_) {}
-    try {
+    _pets = await _firebaseService.getPets();
+    _styles = await _firebaseService.getStyles();
+    _creations = await _firebaseService.getCreations();
+    _tutorials = await _firebaseService.getTutorials();
+    _reports = await _firebaseService.getReports();
+    if (userRole == 'admin' || userRole == 'root') {
       _users = await _firebaseService.getUsers();
-    } catch (_) {}
+    } else {
+      _users = [];
+    }
     notifyListeners();
   }
 
@@ -182,38 +223,37 @@ class AppStateProvider extends ChangeNotifier {
 
   // --- Theme Mode ---
   Future<void> toggleDarkMode(bool value) async {
+    await _firebaseService.updateCurrentUserFields({'isDarkMode': value});
     _isDarkMode = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_dark_mode', value);
     notifyListeners();
   }
 
   // --- Settings modifications ---
   Future<void> setLanguage(String value) async {
+    await _firebaseService.updateCurrentUserFields({'language': value});
     _language = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('language', value);
     notifyListeners();
   }
 
   Future<void> setPushNotifications(bool value) async {
+    await _firebaseService.updateCurrentUserFields({
+      'pushNotifications': value,
+    });
     _pushNotifications = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('push_notifications', value);
     notifyListeners();
   }
 
   Future<void> setEmailNotifications(bool value) async {
+    await _firebaseService.updateCurrentUserFields({
+      'emailNotifications': value,
+    });
     _emailNotifications = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('email_notifications', value);
     notifyListeners();
   }
 
   Future<void> setImageQuality(String value) async {
+    await _firebaseService.updateCurrentUserFields({'imageQuality': value});
     _imageQuality = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('image_quality', value);
     notifyListeners();
   }
 
@@ -225,31 +265,31 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   Future<void> addCredits(int amount) async {
-    _credits += amount;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('user_credits', _credits);
+    final nextCredits = _credits + amount;
+    await _firebaseService.updateCurrentUserFields({'credits': nextCredits});
+    _credits = nextCredits;
     notifyListeners();
   }
 
   Future<void> toggleFavoriteTutorial(String id) async {
-    if (_favoriteTutorialIds.contains(id)) {
-      _favoriteTutorialIds.remove(id);
-    } else {
-      _favoriteTutorialIds.add(id);
-    }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('favorite_tutorials', _favoriteTutorialIds);
+    await _firebaseService.toggleCurrentUserListValue(
+      'favoriteTutorialIds',
+      id,
+    );
+    _favoriteTutorialIds = await _firebaseService.getCurrentUserList(
+      'favoriteTutorialIds',
+    );
     notifyListeners();
   }
 
   Future<void> toggleCompletedTutorial(String id) async {
-    if (_completedTutorialIds.contains(id)) {
-      _completedTutorialIds.remove(id);
-    } else {
-      _completedTutorialIds.add(id);
-    }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('completed_tutorials', _completedTutorialIds);
+    await _firebaseService.toggleCurrentUserListValue(
+      'completedTutorialIds',
+      id,
+    );
+    _completedTutorialIds = await _firebaseService.getCurrentUserList(
+      'completedTutorialIds',
+    );
     notifyListeners();
   }
 
@@ -323,6 +363,14 @@ class AppStateProvider extends ChangeNotifier {
     try {
       await _firebaseService.signIn(email, password);
       _userPhoto = _firebaseService.currentUserPhoto;
+      final profile = await _firebaseService.getCurrentUserProfile();
+      _credits = (profile['credits'] as num?)?.toInt() ?? 0;
+      _favoriteTutorialIds = await _firebaseService.getCurrentUserList(
+        'favoriteTutorialIds',
+      );
+      _completedTutorialIds = await _firebaseService.getCurrentUserList(
+        'completedTutorialIds',
+      );
       await refreshAllData();
     } catch (e) {
       rethrow;
@@ -338,9 +386,13 @@ class AppStateProvider extends ChangeNotifier {
     try {
       await _firebaseService.signUp(email, password, name);
       _userPhoto = '';
-      _credits = 5; // new accounts get 5 credits
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('user_credits', 5);
+      _credits = await _firebaseService.getCurrentUserCredits();
+      _favoriteTutorialIds = await _firebaseService.getCurrentUserList(
+        'favoriteTutorialIds',
+      );
+      _completedTutorialIds = await _firebaseService.getCurrentUserList(
+        'completedTutorialIds',
+      );
       await refreshAllData();
     } catch (e) {
       rethrow;
@@ -351,7 +403,9 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   Future<void> reloadUsers() async {
-    _users = await _firebaseService.getUsers();
+    _users = userRole == 'admin' || userRole == 'root'
+        ? await _firebaseService.getUsers()
+        : [];
     notifyListeners();
   }
 
@@ -360,15 +414,8 @@ class AppStateProvider extends ChangeNotifier {
     String role,
     int credits, [
     String? name,
-    String? password,
   ]) async {
-    await _firebaseService.updateUserInDatabase(
-      email,
-      role,
-      credits,
-      name,
-      password,
-    );
+    await _firebaseService.updateUserInDatabase(email, role, credits, name);
     if (email.trim().toLowerCase() == userEmail.trim().toLowerCase()) {
       _credits = credits;
     }
@@ -380,7 +427,7 @@ class AppStateProvider extends ChangeNotifier {
     String email,
     String role, [
     int credits = 5,
-    String password = 'password123',
+    String password = '',
   ]) async {
     await _firebaseService.addUserToDatabase(
       name,
@@ -392,8 +439,8 @@ class AppStateProvider extends ChangeNotifier {
     await reloadUsers();
   }
 
-  Future<void> deleteUser(String email) async {
-    await _firebaseService.deleteUserFromDatabase(email);
+  Future<void> deactivateUser(String email) async {
+    await _firebaseService.deactivateUserInDatabase(email);
     await reloadUsers();
   }
 
@@ -403,16 +450,11 @@ class AppStateProvider extends ChangeNotifier {
       (u) => (u['email'] ?? '').toString().trim().toLowerCase() == cleanEmail,
       orElse: () => {},
     );
-    final currentCredits =
-        (user['credits'] as int?) ??
-        (cleanEmail == 'cliente_prueba@email.com' ? _credits : 5);
+    if (user.isEmpty) throw StateError('Usuario no encontrado en Firestore.');
+    final currentCredits = (user['credits'] as num?)?.toInt() ?? 0;
     final newCredits = currentCredits + amount;
     final role = (user['role'] as String?) ?? 'client';
-    final name =
-        (user['name'] as String?) ??
-        (cleanEmail == 'cliente_prueba@email.com'
-            ? 'Valentina López'
-            : 'Usuario');
+    final name = (user['name'] as String?) ?? 'Usuario';
     await updateUserRoleAndCredits(cleanEmail, role, newCredits, name);
   }
 
@@ -423,17 +465,12 @@ class AppStateProvider extends ChangeNotifier {
     await _firebaseService.signOut();
 
     _userPhoto = '';
-    _credits = 5;
+    _credits = 0;
     _favoriteTutorialIds = [];
     _completedTutorialIds = [];
     _selectedSimulatorStyle = null;
     _selectedSimulatorPet = null;
     _currentNavIndex = 0;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('user_credits', _credits);
-    await prefs.setStringList('favorite_tutorials', _favoriteTutorialIds);
-    await prefs.setStringList('completed_tutorials', _completedTutorialIds);
 
     await refreshAllData();
     _isLoading = false;
@@ -497,7 +534,6 @@ class AppStateProvider extends ChangeNotifier {
   Future<Creation?> generateArt({
     required Pet pet,
     required ArtStyle style,
-    String coatColor = 'Dorado y Blanco',
   }) async {
     if (_credits <= 0) {
       throw Exception(
@@ -516,31 +552,11 @@ class AppStateProvider extends ChangeNotifier {
         );
       }
 
-      _generationProgress = 0.1;
+      _generationProgress = 0.2;
       notifyListeners();
-      final dogImage = await readImageBytes(pet.imagePath);
-      final styleReferenceImage = await readImageBytes(style.imagePath);
-
-      final generatedImage = await GeminiService.generateGroomingSimulation(
-        dogImage: dogImage,
-        dogImagePath: pet.imagePath,
-        styleReferenceImage: styleReferenceImage,
-        styleImagePath: style.imagePath,
-        petName: pet.name,
-        breed: pet.breed,
-        styleName: style.name,
-        styleDescription: style.description,
-        stylePromptTemplate: style.promptTemplate,
-        coatColor: coatColor,
-        apiKey: _geminiApiKey,
-      );
-
-      _generationProgress = 0.9;
+      await Future.delayed(const Duration(milliseconds: 900));
+      _generationProgress = 0.8;
       notifyListeners();
-      final resultingImagePath = await persistGeneratedImage(
-        generatedImage.bytes,
-        generatedImage.mimeType,
-      );
 
       final newCreation = Creation(
         id: 'creation_${DateTime.now().millisecondsSinceEpoch}',
@@ -548,18 +564,17 @@ class AppStateProvider extends ChangeNotifier {
         petName: pet.name,
         styleId: style.id,
         styleName: style.name,
-        imagePath: resultingImagePath,
+        imagePath: style.imagePath,
         originalImagePath: pet.imagePath,
         date: DateTime.now(),
         likes: 0,
         description:
-            'Simulación visual generada con IA para ${pet.name} con el estilo "${style.name}". El resultado es una referencia previa, no garantiza el resultado real del servicio.',
+            'Vista de referencia del estilo "${style.name}" para ${pet.name}. Esta imagen ilustra el corte, pero no es una transformación de la foto de la mascota.',
       );
 
-      await _firebaseService.addCreation(newCreation);
-      _credits -= 1;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('user_credits', _credits);
+      _credits = await _firebaseService.addCreationAndConsumeCredit(
+        newCreation,
+      );
       await refreshAllData();
       return newCreation;
     } finally {
@@ -569,11 +584,8 @@ class AppStateProvider extends ChangeNotifier {
     }
   }
 
-  // Clear history local mock
   Future<void> clearHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('mock_creations');
-    _creations.clear();
+    await _firebaseService.clearCurrentUserCreations();
     await refreshAllData();
   }
 
@@ -644,9 +656,18 @@ class AppStateProvider extends ChangeNotifier {
 
   // Set user credits dynamically (Admin/Root utility)
   Future<void> setUserCredits(int amount) async {
+    await _firebaseService.updateCurrentUserFields({'credits': amount});
     _credits = amount;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('user_credits', amount);
+    notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> getSystemSettings() =>
+      _firebaseService.getSystemSettings();
+
+  Future<void> setSystemSetting(String key, bool value) async {
+    await _firebaseService.updateSystemSetting(key, value);
+    if (key == 'publicRegistration') _publicRegistrationEnabled = value;
+    if (key == 'maintenanceMode') _maintenanceMode = value;
     notifyListeners();
   }
 
@@ -689,5 +710,11 @@ class AppStateProvider extends ChangeNotifier {
 
   String translate(String key, {Map<String, String>? params}) {
     return AppTranslations.translate(key, _language, params: params);
+  }
+
+  @override
+  void dispose() {
+    _systemSettingsSubscription?.cancel();
+    super.dispose();
   }
 }

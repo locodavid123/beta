@@ -32,13 +32,15 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final creditsController = TextEditingController(text: '5');
-    final passwordController = TextEditingController(text: 'password123');
+    final passwordController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (dialogCtx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Row(
             children: [
               Icon(Icons.person_add, color: Color(0xFFE61D63)),
@@ -108,27 +110,46 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 final creds = int.tryParse(creditsController.text.trim()) ?? 5;
                 final pass = passwordController.text.trim();
 
-                if (name.isEmpty || email.isEmpty) {
+                if (name.isEmpty || email.isEmpty || pass.length < 6) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Por favor ingresa nombre y correo.')),
+                    const SnackBar(
+                      content: Text(
+                        'Ingresa nombre, correo y una contraseña de al menos 6 caracteres.',
+                      ),
+                    ),
                   );
                   return;
                 }
 
-                final state = Provider.of<AppStateProvider>(context, listen: false);
-                await state.createUserFromAdmin(
-                  name,
-                  email,
-                  'client',
-                  creds,
-                  pass.isNotEmpty ? pass : 'password123',
+                final state = Provider.of<AppStateProvider>(
+                  context,
+                  listen: false,
                 );
+                try {
+                  await state.createUserFromAdmin(
+                    name,
+                    email,
+                    'client',
+                    creds,
+                    pass,
+                  );
+                } catch (error) {
+                  if (!dialogCtx.mounted) return;
+                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                    SnackBar(
+                      content: Text('No se pudo crear el cliente: $error'),
+                    ),
+                  );
+                  return;
+                }
 
                 if (!dialogCtx.mounted) return;
                 Navigator.pop(dialogCtx);
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Cliente "$name" registrado exitosamente.')),
+                  SnackBar(
+                    content: Text('Cliente "$name" registrado exitosamente.'),
+                  ),
                 );
               },
               child: const Text('Guardar'),
@@ -140,15 +161,20 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   }
 
   void _showEditClientDialog(Map<String, dynamic> user) {
-    final nameController = TextEditingController(text: user['name']?.toString() ?? '');
-    final creditsController = TextEditingController(text: (user['credits'] ?? 5).toString());
-    final passwordController = TextEditingController();
+    final nameController = TextEditingController(
+      text: user['name']?.toString() ?? '',
+    );
+    final creditsController = TextEditingController(
+      text: (user['credits'] ?? 5).toString(),
+    );
 
     showDialog(
       context: context,
       builder: (dialogCtx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Row(
             children: [
               Icon(Icons.edit, color: Color(0xFFE61D63)),
@@ -189,14 +215,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nueva contraseña (opcional)',
-                    hintText: 'Dejar vacío para no cambiar',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_reset),
-                  ),
+                const Text(
+                  'El cliente puede cambiar su contraseña desde su perfil.',
+                  style: TextStyle(color: Colors.grey),
                 ),
               ],
             ),
@@ -213,18 +234,31 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               ),
               onPressed: () async {
                 final name = nameController.text.trim();
-                final creds = int.tryParse(creditsController.text.trim()) ?? (user['credits'] as int? ?? 5);
-                final pass = passwordController.text.trim();
+                final creds =
+                    int.tryParse(creditsController.text.trim()) ??
+                    (user['credits'] as int? ?? 5);
                 final email = (user['email'] ?? '').toString();
 
-                final state = Provider.of<AppStateProvider>(context, listen: false);
-                await state.updateUserRoleAndCredits(
-                  email,
-                  'client',
-                  creds,
-                  name.isNotEmpty ? name : null,
-                  pass.isNotEmpty ? pass : null,
+                final state = Provider.of<AppStateProvider>(
+                  context,
+                  listen: false,
                 );
+                try {
+                  await state.updateUserRoleAndCredits(
+                    email,
+                    'client',
+                    creds,
+                    name.isNotEmpty ? name : null,
+                  );
+                } catch (error) {
+                  if (!dialogCtx.mounted) return;
+                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                    SnackBar(
+                      content: Text('No se pudo actualizar el cliente: $error'),
+                    ),
+                  );
+                  return;
+                }
 
                 if (!dialogCtx.mounted) return;
                 Navigator.pop(dialogCtx);
@@ -249,10 +283,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       context: context,
       builder: (dialogCtx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('¿Eliminar cliente?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('¿Desactivar cliente?'),
           content: Text(
-            '¿Estás seguro de que deseas eliminar permanentemente la cuenta de "$name" ($email)? Esta acción no se puede deshacer.',
+            '¿Estás seguro de que deseas desactivar el perfil de "$name" ($email)? La cuenta de Firebase Auth y sus archivos de Storage no se eliminarán.',
           ),
           actions: [
             TextButton(
@@ -261,18 +297,38 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ),
             TextButton(
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final state = Provider.of<AppStateProvider>(
+                  context,
+                  listen: false,
+                );
                 Navigator.pop(dialogCtx);
-                final state = Provider.of<AppStateProvider>(context, listen: false);
-                await state.deleteUser(email);
+                try {
+                  await state.deactivateUser(email);
+                } catch (error) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('No se pudo desactivar el cliente: $error'),
+                    ),
+                  );
+                  return;
+                }
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                     backgroundColor: AppTheme.redAccent,
-                    content: Text('Usuario "$name" eliminado del sistema.'),
+                    content: Text('Cliente "$name" desactivado.'),
                   ),
                 );
               },
-              child: const Text('Eliminar', style: TextStyle(color: AppTheme.redAccent, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Desactivar',
+                style: TextStyle(
+                  color: AppTheme.redAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
@@ -286,11 +342,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Load live client users from database state
-    final clientUsers = state.users.where((u) => u['role'] == 'client').toList();
+    final clientUsers = state.users
+        .where((u) => u['role'] == 'client')
+        .toList();
     final allClients = clientUsers.isNotEmpty
         ? clientUsers
         : [
-            {'email': 'cliente_prueba@email.com', 'name': 'Valentina López', 'role': 'client', 'credits': state.credits},
+            {
+              'email': 'cliente_prueba@email.com',
+              'name': 'Valentina López',
+              'role': 'client',
+              'credits': state.credits,
+            },
           ];
 
     final filteredUsers = allClients.where((u) {
@@ -315,7 +378,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Usuarios Clientes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          'Usuarios Clientes',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
         actions: [
           IconButton(
@@ -354,7 +420,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 16,
+                  ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.grey),
@@ -379,17 +448,32 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               children: [
                 Text(
                   '${filteredUsers.length} clientes registrados',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: _showAddClientDialog,
-                  icon: const Icon(Icons.add, size: 16, color: Color(0xFFE61D63)),
+                  icon: const Icon(
+                    Icons.add,
+                    size: 16,
+                    color: Color(0xFFE61D63),
+                  ),
                   label: const Text(
                     'Nuevo Cliente',
-                    style: TextStyle(color: Color(0xFFE61D63), fontSize: 12, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Color(0xFFE61D63),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -406,11 +490,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.person_off_outlined, size: 54, color: Colors.grey[400]),
+                          Icon(
+                            Icons.person_off_outlined,
+                            size: 54,
+                            color: Colors.grey[400],
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             'No se encontraron usuarios clientes.',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 14,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           ElevatedButton.icon(
@@ -426,7 +517,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       itemCount: filteredUsers.length,
                       itemBuilder: (context, index) {
                         final user = filteredUsers[index];
@@ -436,14 +530,21 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
                         // Initials for avatar
                         final initials = name.isNotEmpty
-                            ? name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+                            ? name
+                                  .split(' ')
+                                  .map((e) => e.isNotEmpty ? e[0] : '')
+                                  .take(2)
+                                  .join()
+                                  .toUpperCase()
                             : 'C';
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           elevation: 0,
                           color: isDark ? AppTheme.cardDark : Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(14),
                             child: Row(
@@ -453,7 +554,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFE61D63).withValues(alpha: 0.1),
+                                    color: const Color(
+                                      0xFFE61D63,
+                                    ).withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Center(
@@ -472,16 +575,23 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                 // User Details
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         name,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         email,
-                                        style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                                        style: TextStyle(
+                                          color: Colors.grey[500],
+                                          fontSize: 11,
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -489,10 +599,16 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                       Row(
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 7,
+                                              vertical: 2,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFE61D63).withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: const Color(
+                                                0xFFE61D63,
+                                              ).withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: const Text(
                                               'CLIENTE',
@@ -527,27 +643,49 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                       onPressed: () async {
                                         await state.addUserCredits(email, 5);
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             SnackBar(
-                                              behavior: SnackBarBehavior.floating,
-                                              duration: const Duration(seconds: 2),
-                                              content: Text('Se agregaron +5 créditos a $name ($email).'),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              duration: const Duration(
+                                                seconds: 2,
+                                              ),
+                                              content: Text(
+                                                'Se agregaron +5 créditos a $name ($email).',
+                                              ),
                                             ),
                                           );
                                         }
                                       },
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFE61D63).withValues(alpha: 0.1),
-                                        foregroundColor: const Color(0xFFE61D63),
+                                        backgroundColor: const Color(
+                                          0xFFE61D63,
+                                        ).withValues(alpha: 0.1),
+                                        foregroundColor: const Color(
+                                          0xFFE61D63,
+                                        ),
                                         elevation: 0,
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
                                         minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
                                       ),
                                       child: const Text(
                                         '+5 Créditos',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 6),
@@ -556,20 +694,34 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         InkWell(
-                                          onTap: () => _showEditClientDialog(user),
-                                          borderRadius: BorderRadius.circular(8),
+                                          onTap: () =>
+                                              _showEditClientDialog(user),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           child: Padding(
                                             padding: const EdgeInsets.all(4),
-                                            child: Icon(Icons.edit_outlined, size: 18, color: Colors.grey[600]),
+                                            child: Icon(
+                                              Icons.edit_outlined,
+                                              size: 18,
+                                              color: Colors.grey[600],
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 6),
                                         InkWell(
-                                          onTap: () => _confirmDeleteClient(user),
-                                          borderRadius: BorderRadius.circular(8),
+                                          onTap: () =>
+                                              _confirmDeleteClient(user),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           child: Padding(
                                             padding: const EdgeInsets.all(4),
-                                            child: Icon(Icons.delete_outline, size: 18, color: AppTheme.redAccent),
+                                            child: Icon(
+                                              Icons.delete_outline,
+                                              size: 18,
+                                              color: AppTheme.redAccent,
+                                            ),
                                           ),
                                         ),
                                       ],

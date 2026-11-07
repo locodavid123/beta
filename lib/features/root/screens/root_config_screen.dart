@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -13,8 +12,7 @@ class RootConfigScreen extends StatefulWidget {
 
 class _RootConfigScreenState extends State<RootConfigScreen> {
   final _apiKeyController = TextEditingController();
-  
-  // Simulated System Flags (in memory or SharedPreferences)
+
   bool _publicRegistration = true;
   bool _maintenanceMode = false;
 
@@ -27,16 +25,22 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
   }
 
   Future<void> _loadSystemFlags() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _publicRegistration = prefs.getBool('flag_public_registration') ?? true;
-      _maintenanceMode = prefs.getBool('flag_maintenance_mode') ?? false;
-    });
-  }
-
-  Future<void> _saveFlag(String key, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
+    try {
+      final settings = await Provider.of<AppStateProvider>(
+        context,
+        listen: false,
+      ).getSystemSettings();
+      if (!mounted) return;
+      setState(() {
+        _publicRegistration = settings['publicRegistration'] as bool? ?? true;
+        _maintenanceMode = settings['maintenanceMode'] as bool? ?? false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo cargar la configuración: $e')),
+      );
+    }
   }
 
   @override
@@ -82,7 +86,9 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Clave de API guardada con éxito.')),
+                    const SnackBar(
+                      content: Text('Clave de API guardada con éxito.'),
+                    ),
                   );
                 }
               },
@@ -114,7 +120,10 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Configuración del Sistema', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          'Configuración del Sistema',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
       ),
       body: ListView(
@@ -126,7 +135,9 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
             _buildActionTile(
               icon: Icons.key_outlined,
               title: 'Gemini API Key',
-              subtitle: state.geminiApiKey.isNotEmpty ? '••••••••••••••••' : 'Configurar clave de IA',
+              subtitle: state.geminiApiKey.isNotEmpty
+                  ? '••••••••••••••••'
+                  : 'Configurar clave de IA',
               onTap: _showApiKeyDialog,
             ),
             _buildDivider(isDark),
@@ -164,11 +175,17 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
               title: 'Registro público',
               subtitle: 'Permitir nuevos registros',
               value: _publicRegistration,
-              onChanged: (val) {
-                setState(() {
-                  _publicRegistration = val;
-                });
-                _saveFlag('flag_public_registration', val);
+              onChanged: (val) async {
+                try {
+                  await state.setSystemSetting('publicRegistration', val);
+                  if (!context.mounted) return;
+                  setState(() => _publicRegistration = val);
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('No se pudo guardar: $e')),
+                  );
+                }
               },
             ),
             _buildDivider(isDark),
@@ -177,11 +194,17 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
               title: 'Modo mantenimiento',
               subtitle: 'Desactivar app a usuarios',
               value: _maintenanceMode,
-              onChanged: (val) {
-                setState(() {
-                  _maintenanceMode = val;
-                });
-                _saveFlag('flag_maintenance_mode', val);
+              onChanged: (val) async {
+                try {
+                  await state.setSystemSetting('maintenanceMode', val);
+                  if (!context.mounted) return;
+                  setState(() => _maintenanceMode = val);
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('No se pudo guardar: $e')),
+                  );
+                }
               },
             ),
             _buildDivider(isDark),
@@ -191,7 +214,9 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
               subtitle: 'http://shitzu-5820f.web.app/',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Configuración de dominios CORS (Detallada)')),
+                  const SnackBar(
+                    content: Text('Configuración de dominios CORS (Detallada)'),
+                  ),
                 );
               },
             ),
@@ -204,14 +229,16 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
             _buildActionTile(
               icon: Icons.settings_backup_restore,
               iconColor: AppTheme.redAccent,
-              title: 'Resetear datos de prueba',
-              subtitle: 'Limpiar base de datos y restaurar estilos originales',
+              title: 'Borrar mi historial',
+              subtitle: 'Eliminar las simulaciones guardadas por esta cuenta',
               onTap: () {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('¿Resetear base de datos?'),
-                    content: const Text('Esta acción restaurará la base de datos a sus valores iniciales limpiando el historial.'),
+                    content: const Text(
+                      'Esta acción restaurará la base de datos a sus valores iniciales limpiando el historial.',
+                    ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
@@ -220,20 +247,21 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
                       TextButton(
                         onPressed: () async {
                           await state.clearHistory();
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.remove('mock_styles');
-                          await prefs.remove('mock_pets');
-                          await prefs.remove('mock_tutorials');
-                          await prefs.remove('mock_reports');
-                          await state.refreshAllData();
                           if (context.mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Base de datos restablecida con éxito.')),
+                              const SnackBar(
+                                content: Text(
+                                  'Historial eliminado de Firebase.',
+                                ),
+                              ),
                             );
                           }
                         },
-                        child: const Text('Restablecer', style: TextStyle(color: AppTheme.redAccent)),
+                        child: const Text(
+                          'Restablecer',
+                          style: TextStyle(color: AppTheme.redAccent),
+                        ),
                       ),
                     ],
                   ),
@@ -270,9 +298,7 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: children,
-        ),
+        child: Column(children: children),
       ),
     );
   }
@@ -311,7 +337,11 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
         subtitle,
         style: const TextStyle(color: Colors.grey, fontSize: 11),
       ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        size: 12,
+        color: Colors.grey,
+      ),
       onTap: onTap,
     );
   }
@@ -350,7 +380,11 @@ class _RootConfigScreenState extends State<RootConfigScreen> {
         ),
         child: Text(
           statusLabel,
-          style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: statusColor,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

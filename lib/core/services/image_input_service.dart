@@ -1,8 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'image_storage_io.dart'
@@ -37,22 +37,46 @@ Future<XFile?> pickImage(
   );
 }
 
-Future<String> persistPickedImage(XFile image) async {
-  if (!kIsWeb) return image.path;
+Future<String> persistPickedImage(
+  XFile image, {
+  bool catalogImage = false,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    throw StateError('Inicia sesión para guardar imágenes en Firebase.');
+  }
+
   final bytes = await image.readAsBytes();
-  final mimeType = image.mimeType ?? 'image/jpeg';
-  return 'data:$mimeType;base64,${base64Encode(bytes)}';
+  final mimeType = image.mimeType ?? _mimeTypeFromName(image.name);
+  final extension = image.name.contains('.')
+      ? image.name.split('.').last
+      : 'jpg';
+  final folder = catalogImage ? 'catalog_uploads' : 'user_uploads';
+  final reference = FirebaseStorage.instance.ref(
+    '$folder/${user.uid}/${DateTime.now().microsecondsSinceEpoch}.$extension',
+  );
+  final snapshot = await reference.putData(
+    bytes,
+    SettableMetadata(contentType: mimeType),
+  );
+  return snapshot.ref.getDownloadURL();
 }
 
-Future<String> persistGeneratedImage(Uint8List bytes, String mimeType) =>
-    storage.saveImageBytes(bytes, mimeType);
+String _mimeTypeFromName(String name) {
+  final lowerName = name.toLowerCase();
+  if (lowerName.endsWith('.png')) return 'image/png';
+  if (lowerName.endsWith('.webp')) return 'image/webp';
+  if (lowerName.endsWith('.gif')) return 'image/gif';
+  return 'image/jpeg';
+}
 
 Future<Uint8List> readImageBytes(String path) async {
-  if (path.startsWith('assets/')) {
-    final data = await rootBundle.load(path);
+  final normalizedPath = path.trim();
+  if (normalizedPath.startsWith('assets/')) {
+    final data = await rootBundle.load(normalizedPath);
     return data.buffer.asUint8List();
   }
-  return storage.readImagePath(path);
+  return storage.readImagePath(normalizedPath);
 }
 
 class AppImage extends StatelessWidget {
@@ -73,9 +97,10 @@ class AppImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (path.startsWith('assets/')) {
+    final imagePath = path.trim();
+    if (imagePath.startsWith('assets/')) {
       return Image.asset(
-        path,
+        imagePath,
         fit: fit,
         width: width,
         height: height,
@@ -84,7 +109,7 @@ class AppImage extends StatelessWidget {
     }
 
     return FutureBuilder<Uint8List>(
-      future: readImageBytes(path),
+      future: readImageBytes(imagePath),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return errorBuilder?.call(

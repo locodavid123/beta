@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/style.dart';
+import '../../../core/services/image_input_service.dart';
 
 class AdminCreateStyleScreen extends StatefulWidget {
   final ArtStyle? styleToEdit;
@@ -17,7 +17,7 @@ class AdminCreateStyleScreen extends StatefulWidget {
 
 class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   late String _name;
   late String _category;
   late String _description;
@@ -53,8 +53,12 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
         imageQuality: 85,
       );
       if (pickedFile != null) {
+        final imageUrl = await persistPickedImage(
+          pickedFile,
+          catalogImage: true,
+        );
         setState(() {
-          _imagePath = pickedFile.path;
+          _imagePath = imageUrl;
         });
       }
     } catch (e) {
@@ -80,7 +84,9 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
     final state = Provider.of<AppStateProvider>(context, listen: false);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isEditing = widget.styleToEdit != null;
-    final Color primaryColor = state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63);
+    final Color primaryColor = state.userRole == 'root'
+        ? Colors.blueAccent
+        : const Color(0xFFE61D63);
 
     return Scaffold(
       appBar: AppBar(
@@ -88,7 +94,11 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
           decoration: BoxDecoration(
             gradient: state.userRole == 'root'
                 ? const LinearGradient(
-                    colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    colors: [
+                      Color(0xFF0F172A),
+                      Color(0xFF1E3A8A),
+                      Color(0xFF2563EB),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
@@ -105,7 +115,10 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
         ),
         title: Text(
           isEditing ? 'Editar Estilo' : 'Crear Nuevo Estilo',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
       ),
@@ -123,11 +136,18 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                 TextFormField(
                   initialValue: _name,
                   onChanged: (val) => setState(() => _name = val.trim()),
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa el nombre del estilo' : null,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Ingresa el nombre del estilo'
+                      : null,
                   decoration: const InputDecoration(
                     hintText: 'Ej: Corte Cachorro',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -147,11 +167,23 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                               if (val != null) setState(() => _category = val);
                             },
                             decoration: const InputDecoration(
-                              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(16),
+                                ),
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                             ),
                             items: ['Clásico', 'Cute', 'Fantasía']
-                                .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+                                .map(
+                                  (cat) => DropdownMenuItem(
+                                    value: cat,
+                                    child: Text(cat),
+                                  ),
+                                )
                                 .toList(),
                           ),
                         ],
@@ -166,10 +198,17 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                           const SizedBox(height: 2),
                           CheckboxListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text('Popular', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            title: const Text(
+                              'Popular',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             value: _isHot,
                             activeColor: primaryColor,
-                            onChanged: (val) => setState(() => _isHot = val ?? false),
+                            onChanged: (val) =>
+                                setState(() => _isHot = val ?? false),
                           ),
                         ],
                       ),
@@ -185,11 +224,18 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                   initialValue: _description,
                   onChanged: (val) => setState(() => _description = val.trim()),
                   maxLines: 2,
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa la descripción' : null,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Ingresa la descripción'
+                      : null,
                   decoration: const InputDecoration(
                     hintText: 'Describe el estilo en 1-2 líneas...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -201,11 +247,19 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                   initialValue: _promptTemplate,
                   onChanged: (val) => setState(() => _promptTemplate = val),
                   maxLines: 3,
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa el prompt de IA' : null,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Ingresa el prompt de IA'
+                      : null,
                   decoration: const InputDecoration(
-                    hintText: 'A majestic royal portrait of a [breed] dog, wearing ancient clothes...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    hintText:
+                        'A majestic royal portrait of a [breed] dog, wearing ancient clothes...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -219,12 +273,22 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                       child: TextFormField(
                         key: ValueKey(_imagePath),
                         initialValue: _imagePath,
-                        onChanged: (val) => setState(() => _imagePath = val.trim()),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa la ruta de imagen' : null,
+                        onChanged: (val) =>
+                            setState(() => _imagePath = val.trim()),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Ingresa la ruta de imagen'
+                            : null,
                         decoration: const InputDecoration(
-                          hintText: 'assets/images/corte_cachorro.png o archivo local',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          hintText:
+                              'assets/images/corte_cachorro.png o archivo local',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -236,8 +300,13 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ],
@@ -246,25 +315,21 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: _imagePath.startsWith('assets/')
-                        ? Image.asset(
-                            _imagePath,
-                            height: 120,
-                            width: 120,
-                            fit: BoxFit.cover,
-                          )
-                        : Image.file(
-                            File(_imagePath),
-                            height: 120,
-                            width: 120,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              height: 120,
-                              width: 120,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.broken_image, color: Colors.grey),
-                            ),
-                          ),
+                    child: AppImage(
+                      path: _imagePath,
+                      height: 120,
+                      width: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 120,
+                        width: 120,
+                        color: Colors.grey[200],
+                        child: const Icon(
+                          Icons.broken_image,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
                 const SizedBox(height: 18),
@@ -286,14 +351,22 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                color: selected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                color: selected
+                                    ? Colors.white
+                                    : (isDark
+                                          ? Colors.white70
+                                          : Colors.black87),
                               ),
                             ),
                           ),
                           selected: selected,
                           selectedColor: primaryColor,
-                          backgroundColor: isDark ? AppTheme.cardDark : Colors.grey[200],
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          backgroundColor: isDark
+                              ? AppTheme.cardDark
+                              : Colors.grey[200],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                           onSelected: (val) {
                             if (val) setState(() => _coatType = type);
                           },
@@ -321,14 +394,22 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                color: selected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                color: selected
+                                    ? Colors.white
+                                    : (isDark
+                                          ? Colors.white70
+                                          : Colors.black87),
                               ),
                             ),
                           ),
                           selected: selected,
                           selectedColor: primaryColor,
-                          backgroundColor: isDark ? AppTheme.cardDark : Colors.grey[200],
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          backgroundColor: isDark
+                              ? AppTheme.cardDark
+                              : Colors.grey[200],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                           onSelected: (val) {
                             if (val) setState(() => _difficulty = diff);
                           },
@@ -405,10 +486,16 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                           await state.updateStyle(style);
                         } else {
                           // Check if ID already exists
-                          final exist = state.styles.any((s) => s.id == style.id);
+                          final exist = state.styles.any(
+                            (s) => s.id == style.id,
+                          );
                           if (exist) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Ya existe un estilo con este nombre.')),
+                              const SnackBar(
+                                content: Text(
+                                  'Ya existe un estilo con este nombre.',
+                                ),
+                              ),
                             );
                             return;
                           }
@@ -426,9 +513,11 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(isEditing
-                                  ? 'Estilo actualizado con éxito.'
-                                  : 'Nuevo estilo guardado con éxito.'),
+                              content: Text(
+                                isEditing
+                                    ? 'Estilo actualizado con éxito.'
+                                    : 'Nuevo estilo guardado con éxito.',
+                              ),
                             ),
                           );
                           Navigator.pop(context);
@@ -438,10 +527,18 @@ class _AdminCreateStyleScreenState extends State<AdminCreateStyleScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       elevation: 0,
                     ),
-                    child: const Text('Guardar Estilo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    child: const Text(
+                      'Guardar Estilo',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 40),

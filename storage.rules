@@ -1,0 +1,41 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function systemSettingsExist() {
+      return firestore.exists(/databases/(default)/documents/system/settings);
+    }
+
+    function activeUser() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.disabled != true
+        && (!systemSettingsExist()
+          || firestore.get(/databases/(default)/documents/system/settings).data.maintenanceMode != true
+          || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'root']);
+    }
+
+    function isAdmin() {
+      return activeUser()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'root'];
+    }
+
+    match /user_uploads/{userId}/{fileName} {
+      allow read: if activeUser()
+        && (request.auth.uid == userId || isAdmin());
+      allow write: if activeUser()
+        && request.auth.uid == userId
+        && (request.resource == null
+          || (request.resource.size < 10 * 1024 * 1024
+            && request.resource.contentType.matches('image/.*')));
+    }
+
+    match /catalog_uploads/{userId}/{fileName} {
+      allow read: if activeUser();
+      allow write: if isAdmin()
+        && request.auth.uid == userId
+        && (request.resource == null
+          || (request.resource.size < 10 * 1024 * 1024
+            && request.resource.contentType.matches('image/.*')));
+    }
+  }
+}

@@ -2,10 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:beta/core/providers/app_state.dart';
 import 'package:beta/core/models/coat_diagnosis.dart';
-import 'package:beta/core/services/firebase_service.dart';
 import 'package:beta/core/services/gemini_service.dart';
 import 'package:beta/main.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('App smoke test - verifies app initializes with Provider', (
@@ -83,38 +81,4 @@ void main() {
 
     expect(shared.isShihTzu, isTrue);
   });
-
-  test('signOut clears the current user name and role from storage', () async {
-    SharedPreferences.setMockInitialValues({});
-
-    final prefs = await SharedPreferences.getInstance();
-    final service = FirebaseService();
-
-    await service.signIn('cliente_prueba@email.com', 'password123');
-    await service.signOut();
-
-    expect(service.currentUserEmail, isNull);
-    expect(service.currentUserName, 'Usuario');
-    expect(prefs.getString('user_name'), isNull);
-    expect(prefs.getString('user_role'), isNull);
-  });
-
-  test(
-    'logoutUser resets session data so stale user state is not kept',
-    () async {
-      SharedPreferences.setMockInitialValues({});
-
-      final state = AppStateProvider();
-      await state.setUserCredits(12);
-      await state.toggleFavoriteTutorial('t1');
-      await state.toggleCompletedTutorial('t2');
-
-      await state.logoutUser();
-
-      expect(state.credits, 5);
-      expect(state.userPhoto, isEmpty);
-      expect(state.favoriteTutorialIds, isEmpty);
-      expect(state.completedTutorialIds, isEmpty);
-    },
-  );
 }

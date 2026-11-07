@@ -1,19 +1,19 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 
-Future<Uint8List> readImagePath(String path) => File(path).readAsBytes();
-
-Future<String> saveImageBytes(Uint8List bytes, String mimeType) async {
-  final directory = await getApplicationDocumentsDirectory();
-  final extension = switch (mimeType) {
-    'image/jpeg' => 'jpg',
-    'image/webp' => 'webp',
-    _ => 'png',
-  };
-  final path =
-      '${directory.path}${Platform.pathSeparator}grooming_${DateTime.now().microsecondsSinceEpoch}.$extension';
-  await File(path).writeAsBytes(bytes, flush: true);
-  return path;
+Future<Uint8List> readImagePath(String path) async {
+  final uri = Uri.tryParse(path);
+  if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+    final response = await http.get(uri).timeout(const Duration(seconds: 30));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw HttpException(
+        'No se pudo descargar la imagen (HTTP ${response.statusCode}).',
+        uri: uri,
+      );
+    }
+    return response.bodyBytes;
+  }
+  return File(path).readAsBytes();
 }

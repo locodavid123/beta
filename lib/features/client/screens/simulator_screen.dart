@@ -122,7 +122,6 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       final result = await state.generateArt(
         pet: petToUse!,
         style: _selectedStyle!,
-        coatColor: _selectedCoatColor,
       );
       setState(() {
         _latestCreation = result;

@@ -17,7 +17,7 @@ class ArtStyle {
     required this.id,
     required this.name,
     required this.category,
-    required this.imagePath,
+    required String imagePath,
     required this.description,
     this.isHot = false,
     this.status = 'activo',
@@ -27,7 +27,7 @@ class ArtStyle {
     this.uses = 0,
     this.tutorialId = '',
     this.videoUrl = '',
-  });
+  }) : imagePath = imagePath.trim();
 
   Map<String, dynamic> toMap() {
     return {
@@ -97,4 +97,3 @@ class ArtStyle {
     );
   }
 }
-

@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/style.dart';
+import '../../../core/services/image_input_service.dart';
 import 'admin_create_style_screen.dart';
 
 class AdminCatalogScreen extends StatefulWidget {
@@ -13,7 +13,8 @@ class AdminCatalogScreen extends StatefulWidget {
   State<AdminCatalogScreen> createState() => _AdminCatalogScreenState();
 }
 
-class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTickerProviderStateMixin {
+class _AdminCatalogScreenState extends State<AdminCatalogScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -38,11 +39,14 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
   Widget build(BuildContext context) {
     final state = Provider.of<AppStateProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63);
+    final primaryColor = state.userRole == 'root'
+        ? Colors.blueAccent
+        : const Color(0xFFE61D63);
 
     // Filter styles based on search and selected tab
     List<ArtStyle> filteredStyles = state.styles.where((style) {
-      final nameMatches = style.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+      final nameMatches =
+          style.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           style.category.toLowerCase().contains(_searchQuery.toLowerCase());
 
       final tabIndex = _tabController.index;
@@ -62,7 +66,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
           decoration: BoxDecoration(
             gradient: state.userRole == 'root'
                 ? const LinearGradient(
-                    colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    colors: [
+                      Color(0xFF0F172A),
+                      Color(0xFF1E3A8A),
+                      Color(0xFF2563EB),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
@@ -77,7 +85,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Catálogo de Estilos', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          'Catálogo de Estilos',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
         actions: [
           Padding(
@@ -86,26 +97,41 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const AdminCreateStyleScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const AdminCreateStyleScreen(),
+                  ),
                 );
               },
-              icon: Icon(Icons.add, size: 16, color: state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63)),
+              icon: Icon(
+                Icons.add,
+                size: 16,
+                color: state.userRole == 'root'
+                    ? Colors.blueAccent
+                    : const Color(0xFFE61D63),
+              ),
               label: Text(
                 'Nuevo',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63),
+                  color: state.userRole == 'root'
+                      ? Colors.blueAccent
+                      : const Color(0xFFE61D63),
                 ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
-          )
+          ),
         ],
       ),
       body: Column(
@@ -138,7 +164,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 16,
+                  ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.grey),
@@ -165,7 +194,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
               indicatorColor: primaryColor,
               labelColor: primaryColor,
               unselectedLabelColor: Colors.grey,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
               unselectedLabelStyle: const TextStyle(fontSize: 13),
               dividerColor: Colors.transparent,
               indicatorPadding: EdgeInsets.zero,
@@ -183,7 +215,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
             child: Text(
               '$activeCount activos • $draftCount borradores',
-              style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
 
@@ -194,7 +230,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.palette_outlined, size: 48, color: Colors.grey[400]),
+                        Icon(
+                          Icons.palette_outlined,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'No se encontraron estilos.',
@@ -204,7 +244,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     itemCount: filteredStyles.length,
                     itemBuilder: (context, index) {
                       final style = filteredStyles[index];
@@ -219,7 +262,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
 
   Widget _buildStyleCard(BuildContext context, ArtStyle style, bool isDark) {
     final state = Provider.of<AppStateProvider>(context, listen: false);
-    final primaryColor = state.userRole == 'root' ? Colors.blueAccent : const Color(0xFFE61D63);
+    final primaryColor = state.userRole == 'root'
+        ? Colors.blueAccent
+        : const Color(0xFFE61D63);
 
     // Dynamic color based on status
     Color statusColor;
@@ -252,35 +297,18 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
             // Thumbnail image
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: style.imagePath.startsWith('assets/')
-                  ? Image.asset(
-                      style.imagePath,
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 72,
-                          height: 72,
-                          color: primaryColor.withValues(alpha: 0.1),
-                          child: Icon(Icons.broken_image, color: primaryColor),
-                        );
-                      },
-                    )
-                  : Image.file(
-                      File(style.imagePath),
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 72,
-                          height: 72,
-                          color: primaryColor.withValues(alpha: 0.1),
-                          child: Icon(Icons.broken_image, color: primaryColor),
-                        );
-                      },
-                    ),
+              child: AppImage(
+                path: style.imagePath,
+                width: 72,
+                height: 72,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 72,
+                  height: 72,
+                  color: primaryColor.withValues(alpha: 0.1),
+                  child: Icon(Icons.broken_image, color: primaryColor),
+                ),
+              ),
             ),
             const SizedBox(width: 16),
 
@@ -295,7 +323,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                       Container(
                         width: 6,
                         height: 6,
-                        decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -311,7 +342,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                   const SizedBox(height: 4),
                   Text(
                     style.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -327,18 +361,27 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
               children: [
                 // Edit (Yellow pencil icon)
                 IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: AppTheme.goldAccent, size: 20),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    color: AppTheme.goldAccent,
+                    size: 20,
+                  ),
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => AdminCreateStyleScreen(styleToEdit: style)),
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AdminCreateStyleScreen(styleToEdit: style),
+                      ),
                     );
                   },
                 ),
                 // Archive / Restore (Green up/down arrow or folder icon)
                 IconButton(
                   icon: Icon(
-                    style.status == 'archivado' ? Icons.unarchive_outlined : Icons.archive_outlined,
+                    style.status == 'archivado'
+                        ? Icons.unarchive_outlined
+                        : Icons.archive_outlined,
                     color: AppTheme.greenAccent,
                     size: 20,
                   ),
@@ -350,7 +393,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                       imagePath: style.imagePath,
                       description: style.description,
                       isHot: style.isHot,
-                      status: style.status == 'archivado' ? 'activo' : 'archivado',
+                      status: style.status == 'archivado'
+                          ? 'activo'
+                          : 'archivado',
                       promptTemplate: style.promptTemplate,
                       coatType: style.coatType,
                       difficulty: style.difficulty,
@@ -360,9 +405,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(style.status == 'archivado'
-                              ? 'Estilo restaurado con éxito.'
-                              : 'Estilo archivado con éxito.'),
+                          content: Text(
+                            style.status == 'archivado'
+                                ? 'Estilo restaurado con éxito.'
+                                : 'Estilo archivado con éxito.',
+                          ),
                         ),
                       );
                     }
@@ -370,13 +417,19 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                 ),
                 // Delete (Red trash can)
                 IconButton(
-                  icon: const Icon(Icons.delete_outline_outlined, color: AppTheme.redAccent, size: 20),
+                  icon: const Icon(
+                    Icons.delete_outline_outlined,
+                    color: AppTheme.redAccent,
+                    size: 20,
+                  ),
                   onPressed: () {
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text('¿Eliminar estilo?'),
-                        content: Text('¿Estás seguro de que quieres eliminar el estilo "${style.name}"?'),
+                        content: Text(
+                          '¿Estás seguro de que quieres eliminar el estilo "${style.name}"?',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
@@ -388,11 +441,18 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> with SingleTick
                               await state.deleteStyle(style.id);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Estilo "${style.name}" eliminado.')),
+                                  SnackBar(
+                                    content: Text(
+                                      'Estilo "${style.name}" eliminado.',
+                                    ),
+                                  ),
                                 );
                               }
                             },
-                            child: const Text('Eliminar', style: TextStyle(color: AppTheme.redAccent)),
+                            child: const Text(
+                              'Eliminar',
+                              style: TextStyle(color: AppTheme.redAccent),
+                            ),
                           ),
                         ],
                       ),

@@ -10,7 +10,8 @@ class RootUsersScreen extends StatefulWidget {
   State<RootUsersScreen> createState() => _RootUsersScreenState();
 }
 
-class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProviderStateMixin {
+class _RootUsersScreenState extends State<RootUsersScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _searchController = TextEditingController();
   String _searchQuery = '';
@@ -39,7 +40,7 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
   void _showAddUserDialog() {
     final emailController = TextEditingController();
     final nameController = TextEditingController();
-    final passwordController = TextEditingController(text: 'password123');
+    final passwordController = TextEditingController();
     final creditsController = TextEditingController(text: '5');
     String role = 'admin';
 
@@ -49,7 +50,9 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               title: const Row(
                 children: [
                   Icon(Icons.person_add_alt_1, color: AppTheme.primaryColor),
@@ -88,9 +91,18 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                         prefixIcon: Icon(Icons.security),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'client', child: Text('CLIENTE')),
-                        DropdownMenuItem(value: 'admin', child: Text('ADMINISTRADOR')),
-                        DropdownMenuItem(value: 'root', child: Text('ROOT (SUPERUSUARIO)')),
+                        DropdownMenuItem(
+                          value: 'client',
+                          child: Text('CLIENTE'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'admin',
+                          child: Text('ADMINISTRADOR'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'root',
+                          child: Text('ROOT (SUPERUSUARIO)'),
+                        ),
                       ],
                       onChanged: (val) {
                         if (val != null) {
@@ -141,28 +153,51 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                     final name = nameController.text.trim();
                     final email = emailController.text.trim();
                     final pass = passwordController.text.trim();
-                    final creds = int.tryParse(creditsController.text.trim()) ?? (role == 'client' ? 5 : 999);
+                    final creds =
+                        int.tryParse(creditsController.text.trim()) ??
+                        (role == 'client' ? 5 : 999);
 
-                    if (name.isEmpty || email.isEmpty) {
+                    if (name.isEmpty || email.isEmpty || pass.length < 6) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Por favor completa todos los campos requeridos.')),
+                        const SnackBar(
+                          content: Text(
+                            'Completa nombre, correo y una contraseña de al menos 6 caracteres.',
+                          ),
+                        ),
                       );
                       return;
                     }
 
-                    final state = Provider.of<AppStateProvider>(context, listen: false);
-                    await state.createUserFromAdmin(
-                      name,
-                      email,
-                      role,
-                      creds,
-                      pass.isNotEmpty ? pass : 'password123',
+                    final state = Provider.of<AppStateProvider>(
+                      context,
+                      listen: false,
                     );
+                    try {
+                      await state.createUserFromAdmin(
+                        name,
+                        email,
+                        role,
+                        creds,
+                        pass,
+                      );
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('No se pudo crear el usuario: $error'),
+                        ),
+                      );
+                      return;
+                    }
 
                     if (context.mounted) {
                       Navigator.pop(dialogCtx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Usuario "$name" creado en la base de datos.')),
+                        SnackBar(
+                          content: Text(
+                            'Usuario "$name" creado en la base de datos.',
+                          ),
+                        ),
                       );
                     }
                   },
@@ -177,9 +212,12 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
   }
 
   void _showEditUserDialog(int index, Map<String, dynamic> user) {
-    final nameController = TextEditingController(text: user['name']?.toString() ?? '');
-    final creditsController = TextEditingController(text: (user['credits'] ?? 5).toString());
-    final passwordController = TextEditingController();
+    final nameController = TextEditingController(
+      text: user['name']?.toString() ?? '',
+    );
+    final creditsController = TextEditingController(
+      text: (user['credits'] ?? 5).toString(),
+    );
     String role = user['role']?.toString() ?? 'client';
     final email = (user['email'] ?? '').toString();
 
@@ -189,7 +227,9 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               title: const Row(
                 children: [
                   Icon(Icons.edit, color: AppTheme.goldAccent),
@@ -228,9 +268,18 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                         prefixIcon: Icon(Icons.security),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'client', child: Text('CLIENTE')),
-                        DropdownMenuItem(value: 'admin', child: Text('ADMINISTRADOR')),
-                        DropdownMenuItem(value: 'root', child: Text('ROOT (SUPERUSUARIO)')),
+                        DropdownMenuItem(
+                          value: 'client',
+                          child: Text('CLIENTE'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'admin',
+                          child: Text('ADMINISTRADOR'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'root',
+                          child: Text('ROOT (SUPERUSUARIO)'),
+                        ),
                       ],
                       onChanged: (val) {
                         if (val != null) {
@@ -251,14 +300,9 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nueva Contraseña (opcional)',
-                        hintText: 'Dejar vacío para mantener la actual',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock_reset),
-                      ),
+                    const Text(
+                      'El usuario puede cambiar su contraseña desde su perfil.',
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ],
                 ),
@@ -276,22 +320,39 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                   onPressed: () async {
                     final name = nameController.text.trim();
                     final credStr = creditsController.text.trim();
-                    final creds = int.tryParse(credStr) ?? (user['credits'] as int? ?? 5);
-                    final pass = passwordController.text.trim();
-
-                    final state = Provider.of<AppStateProvider>(context, listen: false);
-                    await state.updateUserRoleAndCredits(
-                      email,
-                      role,
-                      creds,
-                      name.isNotEmpty ? name : null,
-                      pass.isNotEmpty ? pass : null,
+                    final creds =
+                        int.tryParse(credStr) ?? (user['credits'] as int? ?? 5);
+                    final state = Provider.of<AppStateProvider>(
+                      context,
+                      listen: false,
                     );
+                    try {
+                      await state.updateUserRoleAndCredits(
+                        email,
+                        role,
+                        creds,
+                        name.isNotEmpty ? name : null,
+                      );
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'No se pudo actualizar el usuario: $error',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
 
                     if (context.mounted) {
                       Navigator.pop(dialogCtx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Usuario actualizado en la base de datos.')),
+                        const SnackBar(
+                          content: Text(
+                            'Usuario actualizado en la base de datos.',
+                          ),
+                        ),
                       );
                     }
                   },
@@ -314,7 +375,9 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppTheme.redAccent,
-          content: Text('No puedes eliminar la cuenta de superusuario con la que has iniciado sesión.'),
+          content: Text(
+            'No puedes eliminar la cuenta de superusuario con la que has iniciado sesión.',
+          ),
         ),
       );
       return;
@@ -324,10 +387,12 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
       context: context,
       builder: (dialogCtx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('¿Eliminar usuario?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('¿Desactivar usuario?'),
           content: Text(
-            '¿Estás seguro de que deseas eliminar la cuenta de "$name" ($email)? Esta acción eliminará su acceso y créditos.',
+            '¿Estás seguro de que deseas desactivar la cuenta de "$name" ($email)? Se desactivará su perfil de Firestore; Firebase Auth y sus archivos de Storage no se eliminarán.',
           ),
           actions: [
             TextButton(
@@ -337,16 +402,32 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
             TextButton(
               onPressed: () async {
                 Navigator.pop(dialogCtx);
-                await state.deleteUser(email);
+                try {
+                  await state.deactivateUser(email);
+                } catch (error) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('No se pudo desactivar el usuario: $error'),
+                    ),
+                  );
+                  return;
+                }
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: AppTheme.redAccent,
-                    content: Text('Usuario "$name" eliminado del sistema.'),
+                    content: Text('Usuario "$name" desactivado.'),
                   ),
                 );
               },
-              child: const Text('Eliminar', style: TextStyle(color: AppTheme.redAccent, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Desactivar',
+                style: TextStyle(
+                  color: AppTheme.redAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
@@ -363,9 +444,24 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
     _allUsers = state.users.isNotEmpty
         ? state.users
         : [
-            {'name': 'Root Admin', 'email': 'root@myapp.com', 'role': 'root', 'credits': 999},
-            {'name': 'Admin General', 'email': 'admin@myapp.com', 'role': 'admin', 'credits': 999},
-            {'name': 'Valentina López', 'email': 'cliente_prueba@email.com', 'role': 'client', 'credits': state.credits},
+            {
+              'name': 'Root Admin',
+              'email': 'root@myapp.com',
+              'role': 'root',
+              'credits': 999,
+            },
+            {
+              'name': 'Admin General',
+              'email': 'admin@myapp.com',
+              'role': 'admin',
+              'credits': 999,
+            },
+            {
+              'name': 'Valentina López',
+              'email': 'cliente_prueba@email.com',
+              'role': 'client',
+              'credits': state.credits,
+            },
           ];
 
     // Filter list
@@ -384,7 +480,9 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
     }).toList();
 
     final totalUsersCount = _allUsers.length;
-    final adminsCount = _allUsers.where((u) => u['role'] == 'admin' || u['role'] == 'root').length;
+    final adminsCount = _allUsers
+        .where((u) => u['role'] == 'admin' || u['role'] == 'root')
+        .length;
 
     return Scaffold(
       appBar: AppBar(
@@ -401,17 +499,24 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Gestión de Usuarios', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          'Gestión de Usuarios',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              icon: const Icon(Icons.add_circle_outline, size: 26, color: Colors.white),
+              icon: const Icon(
+                Icons.add_circle_outline,
+                size: 26,
+                color: Colors.white,
+              ),
               tooltip: 'Agregar Usuario',
               onPressed: _showAddUserDialog,
             ),
-          )
+          ),
         ],
       ),
       body: Column(
@@ -444,7 +549,10 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 16,
+                  ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.grey),
@@ -469,7 +577,10 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
               indicatorColor: AppTheme.primaryColor,
               labelColor: AppTheme.primaryColor,
               unselectedLabelColor: Colors.grey,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
               unselectedLabelStyle: const TextStyle(fontSize: 13),
               dividerColor: Colors.transparent,
               tabs: const [
@@ -489,10 +600,17 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
               children: [
                 Text(
                   '$totalUsersCount cuentas registradas',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -518,7 +636,11 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.person_search_outlined, size: 54, color: Colors.grey[400]),
+                          Icon(
+                            Icons.person_search_outlined,
+                            size: 54,
+                            color: Colors.grey[400],
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             'No se encontraron usuarios en esta categoría.',
@@ -538,7 +660,10 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
                       itemCount: filteredUsers.length,
                       itemBuilder: (context, index) {
                         final user = filteredUsers[index];
@@ -549,7 +674,12 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
 
                         // Display initials
                         final initials = name.isNotEmpty
-                            ? name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+                            ? name
+                                  .split(' ')
+                                  .map((e) => e.isNotEmpty ? e[0] : '')
+                                  .take(2)
+                                  .join()
+                                  .toUpperCase()
                             : 'U';
 
                         Color roleColor;
@@ -570,33 +700,54 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                           margin: const EdgeInsets.only(bottom: 12),
                           elevation: 0,
                           color: isDark ? AppTheme.cardDark : Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                           child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                             leading: CircleAvatar(
                               backgroundColor: roleColor.withValues(alpha: 0.1),
-                              child: Text(initials, style: TextStyle(color: roleColor, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                initials,
+                                style: TextStyle(
+                                  color: roleColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                             title: Row(
                               children: [
                                 Expanded(
                                   child: Text(
                                     name,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: roleColor.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     role.toUpperCase(),
-                                    style: TextStyle(color: roleColor, fontSize: 8, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: roleColor,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -607,15 +758,22 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                                 const SizedBox(height: 4),
                                 Text(
                                   email,
-                                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 11,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  role == 'client' ? 'Créditos: $credits' : 'Créditos: Ilimitados (∞)',
+                                  role == 'client'
+                                      ? 'Créditos: $credits'
+                                      : 'Créditos: Ilimitados (∞)',
                                   style: TextStyle(
-                                    color: role == 'client' ? AppTheme.primaryColor : Colors.grey[600],
+                                    color: role == 'client'
+                                        ? AppTheme.primaryColor
+                                        : Colors.grey[600],
                                     fontWeight: FontWeight.bold,
                                     fontSize: 11,
                                   ),
@@ -626,13 +784,22 @@ class _RootUsersScreenState extends State<RootUsersScreen> with SingleTickerProv
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.edit_outlined, color: AppTheme.goldAccent, size: 20),
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    color: AppTheme.goldAccent,
+                                    size: 20,
+                                  ),
                                   tooltip: 'Editar usuario',
-                                  onPressed: () => _showEditUserDialog(index, user),
+                                  onPressed: () =>
+                                      _showEditUserDialog(index, user),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: AppTheme.redAccent, size: 20),
-                                  tooltip: 'Eliminar usuario',
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: AppTheme.redAccent,
+                                    size: 20,
+                                  ),
+                                  tooltip: 'Desactivar usuario',
                                   onPressed: () => _confirmDeleteUser(user),
                                 ),
                               ],

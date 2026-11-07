@@ -1,1 +1,1 @@
-{"firestore":{"rules":"firestore.rules"},"flutter":{"platforms":{"dart":{"lib/firebase_options.dart":{"projectId":"shitzu-58831","configurations":{"web":"1:876515520923:web:27dcc7a776c7551a26713e"}}}}}}
+{"firestore":{"rules":"firestore.rules"},"storage":{"rules":"storage.rules"},"flutter":{"platforms":{"dart":{"lib/firebase_options.dart":{"projectId":"shitzu-58831","configurations":{"web":"1:876515520923:web:27dcc7a776c7551a26713e"}}}}}}

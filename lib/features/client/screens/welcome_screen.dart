@@ -67,10 +67,10 @@ class WelcomeScreen extends StatelessWidget {
                       Text(
                         state.translate('welcome_title'),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontSize: 34,
-                              color: Colors.white,
-                              letterSpacing: -0.5,
-                            ),
+                          fontSize: 34,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       // Subtitle
@@ -121,7 +121,10 @@ class WelcomeScreen extends StatelessWidget {
               flex: 4,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 28,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? AppTheme.cardDark : Colors.white,
                   borderRadius: const BorderRadius.only(
@@ -144,10 +147,8 @@ class WelcomeScreen extends StatelessWidget {
                         // Welcome text
                         Text(
                           state.translate('welcome_heading'),
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontSize: 24,
-                                letterSpacing: -0.5,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontSize: 24, letterSpacing: -0.5),
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -161,38 +162,55 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    
+
                     Column(
                       children: [
                         // Comenzar ahora
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                        if (state.publicRegistrationEnabled &&
+                            !state.maintenanceMode) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const RegisterScreen(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              state.translate('welcome_btn_start'),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                              child: Text(
+                                state.translate('welcome_btn_start'),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
+                          const SizedBox(height: 12),
+                        ] else ...[
+                          Text(
+                            'El registro de nuevas cuentas está desactivado.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         // Iniciar sesión
                         SizedBox(
                           width: double.infinity,
@@ -201,15 +219,21 @@ class WelcomeScreen extends StatelessWidget {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                MaterialPageRoute(
+                                  builder: (context) => const LoginScreen(),
+                                ),
                               );
                             },
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.15,
+                                ),
                                 width: 1.5,
                               ),
-                              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.06),
+                              backgroundColor: AppTheme.primaryColor.withValues(
+                                alpha: 0.06,
+                              ),
                               foregroundColor: AppTheme.primaryColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
@@ -244,7 +268,12 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBadge(BuildContext context, String text, Color bgColor, Color textColor) {
+  Widget _buildBadge(
+    BuildContext context,
+    String text,
+    Color bgColor,
+    Color textColor,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(

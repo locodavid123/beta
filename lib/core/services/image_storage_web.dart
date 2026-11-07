@@ -23,6 +23,3 @@ Future<Uint8List> readImagePath(String path) async {
   }
   throw const FormatException('The image response was not binary data.');
 }
-
-Future<String> saveImageBytes(Uint8List bytes, String mimeType) async =>
-    'data:$mimeType;base64,${base64Encode(bytes)}';

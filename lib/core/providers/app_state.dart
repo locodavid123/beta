@@ -373,9 +373,22 @@ class AppStateProvider extends ChangeNotifier {
   Future<void> logoutUser() async {
     _isLoading = true;
     notifyListeners();
+
     await _firebaseService.signOut();
+
     _userPhoto = '';
+    _credits = 5;
+    _favoriteTutorialIds = [];
+    _completedTutorialIds = [];
+    _selectedSimulatorStyle = null;
+    _selectedSimulatorPet = null;
     _currentNavIndex = 0;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('user_credits', _credits);
+    await prefs.setStringList('favorite_tutorials', _favoriteTutorialIds);
+    await prefs.setStringList('completed_tutorials', _completedTutorialIds);
+
     await refreshAllData();
     _isLoading = false;
     notifyListeners();

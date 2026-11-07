@@ -1217,14 +1217,27 @@ class FirebaseService {
       } catch (_) {}
     }
     _currentUserEmail = null;
+    _currentUserName = null;
     _currentUserRole = 'client';
     _currentUserPhoto = null;
     await prefs.remove('user_email');
+    await prefs.remove('user_name');
     await prefs.remove('user_role');
     await prefs.remove('user_photo');
   }
 
-  String? get currentUserEmail => FirebaseAuth.instance.currentUser?.email ?? _currentUserEmail;
+  String? get currentUserEmail {
+    if (!_isFirebaseInitialized) {
+      return _currentUserEmail;
+    }
+
+    try {
+      return FirebaseAuth.instance.currentUser?.email ?? _currentUserEmail;
+    } catch (_) {
+      return _currentUserEmail;
+    }
+  }
+
   String get currentUserName => _currentUserName ?? 'Usuario';
 
   // --- Pets API ---

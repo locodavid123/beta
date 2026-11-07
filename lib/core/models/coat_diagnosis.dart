@@ -62,15 +62,45 @@ class CoatDiagnosisResult {
     };
   }
 
+  static bool matchesShihTzuBreed(String breedName) {
+    final normalized = breedName
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-záéíóúñü\s-]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (normalized.isEmpty) return false;
+
+    final markers = [
+      'shih',
+      'tzu',
+      'shitzu',
+      'shitsu',
+      'shihtzu',
+      'shih tzu',
+      'shih-tzu',
+      'lhasa',
+      'maltes',
+      'maltés',
+      'bichon',
+      'bichón',
+      'pequin',
+      'pekin',
+      'toy',
+      'mestizo shih',
+      'mix shih',
+      'mezcla shih',
+    ];
+
+    return markers.any((marker) => normalized.contains(marker));
+  }
+
   factory CoatDiagnosisResult.fromMap(Map<String, dynamic> map) {
     final breed = map['detectedBreed']?.toString() ?? 'Shih Tzu';
     final breedLower = breed.toLowerCase();
     bool isBreedShihTzu = map['isShihTzu'] == true;
-    if (breedLower.contains('shih tzu') ||
-        breedLower.contains('shitzu') ||
-        breedLower.contains('shitsu') ||
-        breedLower.contains('shihtzu') ||
-        breedLower.contains('shih-tzu')) {
+
+    if (CoatDiagnosisResult.matchesShihTzuBreed(breedLower)) {
       isBreedShihTzu = true;
     }
 

@@ -19,6 +19,41 @@ class GeminiResult {
 }
 
 class GeminiService {
+  static bool isShihTzuBreed(String breedName) {
+    final normalized = breedName
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-záéíóúñü\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (normalized.isEmpty) return false;
+
+    final shihMarkers = [
+      'shih',
+      'tzu',
+      'shitzu',
+      'shitsu',
+      'shihtzu',
+      'lhasa',
+      'maltes',
+      'maltés',
+      'bichon',
+      'bichón',
+      'pequin',
+      'pekin',
+      'toy',
+      'mestizo shih',
+      'mix shih',
+      'mezcla shih',
+    ];
+
+    if (shihMarkers.any((marker) => normalized.contains(marker))) {
+      return true;
+    }
+
+    return false;
+  }
+
   static Future<GeminiResult> verifyShihTzu(File imageFile, String apiKey) async {
     try {
       final bytes = await imageFile.readAsBytes();
@@ -89,34 +124,14 @@ class GeminiService {
               final breedLower = breed.toString().toLowerCase();
 
               bool isShihTzu = parsed['isShihTzu'] == true;
+              final recognizedBreed = GeminiService.isShihTzuBreed(breedLower);
 
-              // Generous matching for Shih Tzu, mixes, toy breeds, puppies, and companion dogs
-              if (breedLower.contains('shih') ||
-                  breedLower.contains('tzu') ||
-                  breedLower.contains('shitzu') ||
-                  breedLower.contains('shitsu') ||
-                  breedLower.contains('shihtzu') ||
-                  breedLower.contains('lhasa') ||
-                  breedLower.contains('maltes') ||
-                  breedLower.contains('maltés') ||
-                  breedLower.contains('bichon') ||
-                  breedLower.contains('bichón') ||
-                  breedLower.contains('pequin') ||
-                  breedLower.contains('pekin') ||
-                  breedLower.contains('toy') ||
-                  breedLower.contains('mestiz') ||
-                  breedLower.contains('cachorro') ||
-                  breedLower.contains('puppy') ||
-                  breedLower.contains('canino') ||
-                  breedLower.contains('perro') ||
-                  breedLower.contains('dog')) {
+              if (recognizedBreed) {
                 isShihTzu = true;
-              }
-
-              // If it's any canine companion, allow registration as Shih Tzu
-              final isCat = breedLower.contains('gato') || breedLower.contains('cat') || breedLower.contains('felino');
-              if (!isCat) {
-                isShihTzu = true;
+              } else if (!breedLower.contains('gato') &&
+                  !breedLower.contains('cat') &&
+                  !breedLower.contains('felino')) {
+                isShihTzu = false;
               }
 
               return GeminiResult(
